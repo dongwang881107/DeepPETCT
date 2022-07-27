@@ -106,7 +106,7 @@ def save_stat(train_loss, valid_loss, metric, save_path, loss_name, metric_name)
     np.save(metric_path, metric)
     print('{:>45} => {:<40}'.format('Valid metric saved in', metric_path))
 
-# save testing prediction
+# save testing predictions
 def save_pred(pred, save_path, pred_name):
     pred_path = os.path.join(save_path, 'stat', pred_name+'.npy')
     np.save(pred_path,pred)

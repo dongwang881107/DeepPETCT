@@ -3,7 +3,7 @@ import torch.nn as nn
 class RED_CNN(nn.Module):
     def __init__(self, out_ch=96, kernel_size=5, stride=1, padding=0):
         super(RED_CNN, self).__init__()
-        self.conv1 = nn.Conv2d(1, out_ch, kernel_size=kernel_size, stride=stride, padding=padding)
+        self.conv1 = nn.Conv2d(2, out_ch, kernel_size=kernel_size, stride=stride, padding=padding)
         self.conv2 = nn.Conv2d(out_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding)
         self.conv3 = nn.Conv2d(out_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding)
         self.conv4 = nn.Conv2d(out_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding)
@@ -19,7 +19,7 @@ class RED_CNN(nn.Module):
 
     def forward(self, x):
         # encoder
-        residual_1 = x
+        # residual_1 = x
         out = self.relu(self.conv1(x))
         out = self.relu(self.conv2(out))
         residual_2 = out
@@ -35,13 +35,12 @@ class RED_CNN(nn.Module):
         out += residual_2
         out = self.tconv4(self.relu(out))
         out = self.tconv5(self.relu(out))
-        out += residual_1
+        # out += residual_1
         out = self.relu(out)
         return out
 
     def compute_forward(self, x):
         return self.forward(x)
-
 
     def compute_loss(self, pred, y):
         loss_func = nn.MSELoss(reduction='sum')

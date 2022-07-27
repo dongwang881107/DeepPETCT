@@ -3,8 +3,8 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-from deepzoo.preprocessing import *
-from deepzoo.postprocessing import *
+from deeppetct.preprocessing import *
+from deeppetct.postprocessing import *
 
 class Solver(object):
     def __init__(self, dataloader, model, metric_func, args):
@@ -48,7 +48,8 @@ class Solver(object):
             # load plotting parameters
             self.index = args.index
             self.loss_name = args.loss_name
-            self.metric_name = args.metric_name
+            self.valid_metric_name = args.valid_metric_name
+            self.test_metric_name = args.test_metric_name
             self.pred_name = args.pred_name
             self.not_save_plot = args.not_save_plot
             self.not_plot_loss = args.not_plot_loss
@@ -80,9 +81,6 @@ class Solver(object):
         # multi-gpu training and move model to device
         if len(self.device_ids)>1:
             self.model = nn.DataParallel(self.model)
-        #     loss_func = self.model.module.loss()
-        # else:
-        #     loss_func = self.model.loss()
         self.model = self.model.to(self.device)
 
         # compute total patch number
@@ -100,26 +98,20 @@ class Solver(object):
             # training
             train_loss = 0.0
             for (x,y) in self.dataloader[0]:
-                # add 1 channel in feature dimension (batch,feature,weight,height)
-                # x = x.unsqueeze(1).float().to(self.device)
-                # y = y.unsqueeze(1).float().to(self.device)
+                # move data to device
                 x = x.float().to(self.device)
                 y = y.float().to(self.device)
-                # patch training 
+                # patch training/resize to (batch,feature,weight,height)
                 if (self.patch_size!=None) & (self.patch_n!=None):
-                    x = x.view(-1, 1, self.patch_size, self.patch_size)
+                    x = x.view(-1, 2, self.patch_size, self.patch_size)
                     y = y.view(-1, 1, self.patch_size, self.patch_size)
                 # zero the gradients
                 self.model.train()
                 self.model.zero_grad()
                 optim.zero_grad()
                 # forward propagation
-                # TODO: write a method for Model compute_forward(x,y)
-                # pred = self.model(x)
                 pred = self.model.compute_forward(x)
                 # compute loss
-                # TODO: write a method for Model compute_loss(x,y)
-                # loss = loss_func(pred, y)/x.size()[0]
                 loss = self.model.compute_loss(pred, y)/x.size()[0]
                 # backward propagation
                 loss.backward()
@@ -138,18 +130,18 @@ class Solver(object):
             self.model.eval()
             with torch.no_grad():
                 for i, (x,y) in enumerate(self.dataloader[1]):
-                    # add 1 channel in feature dimension (batch,feature,weight,height)
-                    # x = x.unsqueeze(1).float().to(self.device)
-                    # y = y.unsqueeze(1).float().to(self.device)
+                    # move data to device
                     x = x.float().to(self.device)
                     y = y.float().to(self.device)
+                    # patch training/resize to (batch,feature,weight,height)
                     if (self.patch_size!=None) & (self.patch_n!=None):
-                        x = x.view(-1, 1, self.patch_size, self.patch_size)
+                        x = x.view(-1, 2, self.patch_size, self.patch_size)
                         y = y.view(-1, 1, self.patch_size, self.patch_size) 
-                    # pred = self.model(x)
+                    # forward propagation
                     pred = self.model.compute_forward(x)
-                    # loss = loss_func(pred, y)
+                    # compute loss
                     loss = self.model.compute_loss(pred, y)
+                    # compute metric
                     metric = self.metric_func(pred, y)
                     valid_loss += loss.item()
                     valid_metric = metric if i == 0 else {key:valid_metric[key]+metric[key] for key in metric.keys()}
@@ -202,11 +194,16 @@ class Solver(object):
         self.model.eval()
         with torch.no_grad():
             for i, (x,y) in enumerate(self.dataloader):
-                # add 1 channel in feature dimension (batch,feature,weight,height)
+                print(x.squeeze().size())
+                # resize to (batch,feature,weight,height)
+                x = x.view(-1, 2, 144, 144)
+                y = y.view(-1, 1, 144, 144)
+                # move data to device
                 x = x.float().to(self.device)
                 y = y.float().to(self.device)
                 # predict
-                pred = self.model(x)
+                pred = self.model.compute_forward(x)
+                pred = pred/torch.max(pred)
                 metric_x = self.metric_func(x, y)
                 metric_pred = self.metric_func(pred, y)
                 total_metric_x.append(metric_x)
@@ -252,13 +249,13 @@ class Solver(object):
 
         # plot validation metric
         if self.not_plot_metric:
-            metric_path = os.path.join(self.save_path, 'stat', self.metric_name+'.npy')
-            metric = np.load(metric_path, allow_pickle='TRUE')
-            keys = list(metric[0].keys())
-            metrics = np.zeros([len(metric), len(keys)])
-            for i in range(len(metric)):
+            valid_metric_path = os.path.join(self.save_path, 'stat', self.valid_metric_name+'.npy')
+            valid_metric = np.load(valid_metric_path, allow_pickle='TRUE')
+            keys = list(valid_metric[0].keys())
+            metrics = np.zeros([len(valid_metric), len(keys)])
+            for i in range(len(valid_metric)):
                 for j in range(len(keys)):
-                    metrics[i,j] = metric[i][keys[j]]
+                    metrics[i,j] = valid_metric[i][keys[j]]
             for j in range(len(keys)):
                 fig = plt.figure()
                 plt.xlabel('Epoch', fontsize=fs)
@@ -270,26 +267,41 @@ class Solver(object):
         # plot predictions
         if self.not_plot_pred:
             pred_path = os.path.join(self.save_path, 'stat', self.pred_name+'.npy')
+            test_metric_path = os.path.join(self.save_path, 'stat', self.test_metric_name+'.npy')
             pred = np.load(pred_path)
+            test_metric = np.load(test_metric_path, allow_pickle='TRUE')
             data_name = self.dataloader.dataset.get_path()
             if self.index == []:
                 self.index = range(len(self.dataloader))
             for i, (x,y) in enumerate(self.dataloader):
                 if i in self.index:
-                    x = x.squeeze().numpy()
-                    y = y.squeeze().numpy()
+                    # load data
+                    pet10 = x.squeeze()[0,:,:].numpy()
+                    pet60 = y.squeeze().numpy()
                     p = pred[i,:,:,:].squeeze()
-                    data = (y,x,p)
-                    title = ['High Dose', 'Low Dose', 'Prediction']
+                    ct = np.load(data_name[1][i])
+                    # normalize data
+                    ct = ct/np.max(ct)
+                    p = p/np.max(p)
+                    data = (pet10,ct,p,pet60)
+                    title = ['10s', 'CT', 'Proposed', '60s']
                     fig = plt.figure(figsize=(15,4))
-                    for j in range(3):
-                        ax = fig.add_subplot(1,3,j+1)
-                        im = ax.imshow(data[j], cmap=cmap)
+                    for j in range(4):
+                        ax = fig.add_subplot(1,4,j+1)
+                        im = ax.imshow(data[j], cmap='gray' if j==1 else cmap)
                         ax.set_title(title[j], fontsize=fs)
                         ax.axis('off')
                         fig.colorbar(im, ax=ax, fraction=fraction)
-                    self._plot(fig, data_name[0][i].split('/')[-1].split('_')[0])
-        
+                    title_name = 'Low Dose: '
+                    for key in test_metric[0][i].keys():
+                        title_name += key+':'+"{:.4f}".format(test_metric[0][i][key])+', '
+                    title_name += '\n Proposed: '
+                    for key in test_metric[1][i].keys():
+                        title_name += key+':'+"{:.4f}".format(test_metric[1][i][key])+', '
+                    plt.suptitle(title_name, fontsize=10, y=0.15)
+                    fig_name = data_name[0][i].split('/')[-3]+ '_' + \
+                               data_name[0][i].split('/')[-1].split('.')[0]
+                    self._plot(fig, fig_name)
         print('Total plotting time is {:.2f} s'.format(time.time()-start_time))
         print('{:-^118s}'.format('Done!'))
 

@@ -11,52 +11,54 @@ __all__ = [
     "MyTotensor",
 ]
 
-def vflip(x, y):
+def vflip(x, y, z):
     if random.random() > 0.5:
         x = TF.vflip(x)
         y = TF.vflip(y)
-    return x, y
+        z = TF.vflip(z)
+    return x, y, z
 
-def hflip(x, y):
+def hflip(x, y, z):
     if random.random() > 0.5:
         x = TF.hflip(x)
         y = TF.hflip(y)
-    return x, y
+        z = TF.hflip(z)
+    return x, y, z
 
-def to_tensor(x, y):
-    return TF.to_tensor(x), TF.to_tensor(y)
+def to_tensor(x, y, z):
+    return TF.to_tensor(x), TF.to_tensor(y), TF.to_tensor(z)
 
-def rotate(x, y, angle=45):
-    return TF.rotate(x, angle=angle), TF.rotate(y, angle=angle)
+def rotate(x, y, z, angle=45):
+    return TF.rotate(x, angle=angle), TF.rotate(y, angle=angle), TF.rotate(z, angle=angle)
 
-def normalize(x, y):
-    return x/torch.max(x), y/torch.max(y)
+def normalize(x, y, z):
+    return x/torch.max(x), y/torch.max(y), z/torch.max(z)
 
 class MyVflip:
-    def __call__(self, x, y):
-        return vflip(x, y)
+    def __call__(self, x, y, z):
+        return vflip(x, y, z)
 
 class MyHflip:
-    def __call__(self, x, y):
-        return hflip(x, y)
+    def __call__(self, x, y, z):
+        return hflip(x, y, z)
 
 class MyRotate:
-    def __call__(self, x, y, angle=45):
-        return rotate(x, y, angle)
+    def __call__(self, x, y, z, angle=45):
+        return rotate(x, y, z, angle)
 
 class MyTotensor:
-    def __call__(self, x, y):
-        return to_tensor(x, y)
+    def __call__(self, x, y, z):
+        return to_tensor(x, y, z)
 
 class MyNormalize:
-    def __call__(self, x, y):
-        return normalize(x, y)
+    def __call__(self, x, y, z):
+        return normalize(x, y, z)
 
 class TransCompose:
     def __init__(self, transforms):
         self.transforms = transforms
 
-    def __call__(self, x, y):
+    def __call__(self, x, y, z):
         for t in self.transforms:
-            x, y = t(x,y)
-        return x, y
+            x, y, z = t(x,y,z)
+        return x, y, z
