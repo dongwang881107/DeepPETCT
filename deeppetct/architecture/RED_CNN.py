@@ -39,16 +39,9 @@ class RED_CNN(nn.Module):
         out = self.relu(out)
         return out
 
-    def compute_forward(self, x):
-        return self.forward(x)
+    @ classmethod
+    def compute_loss(cls):
+        return nn.MSELoss(reduction='sum')
 
-    def compute_loss(self, pred, y):
-        loss_func = nn.MSELoss(reduction='sum')
-        return loss_func(pred,y)
 
-    def set_optim(self, x):
-        print('optimizer')
-
-    def compute_backward(self, x):
-        return True
 

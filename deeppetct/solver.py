@@ -81,6 +81,9 @@ class Solver(object):
         # multi-gpu training and move model to device
         if len(self.device_ids)>1:
             self.model = nn.DataParallel(self.model)
+            loss_func = self.model.module.compute_loss()
+        else:
+            loss_func = self.model.compute_loss()
         self.model = self.model.to(self.device)
 
         # compute total patch number
@@ -110,9 +113,9 @@ class Solver(object):
                 self.model.zero_grad()
                 optim.zero_grad()
                 # forward propagation
-                pred = self.model.compute_forward(x)
+                pred = self.model(x)
                 # compute loss
-                loss = self.model.compute_loss(pred, y)/x.size()[0]
+                loss = loss_func(pred, y)/x.size()[0]
                 # backward propagation
                 loss.backward()
                 # update weights
@@ -138,9 +141,9 @@ class Solver(object):
                         x = x.view(-1, 2, self.patch_size, self.patch_size)
                         y = y.view(-1, 1, self.patch_size, self.patch_size) 
                     # forward propagation
-                    pred = self.model.compute_forward(x)
+                    pred = self.model(x)
                     # compute loss
-                    loss = self.model.compute_loss(pred, y)
+                    loss = loss_func(pred, y)
                     # compute metric
                     metric = self.metric_func(pred, y)
                     valid_loss += loss.item()
@@ -194,7 +197,6 @@ class Solver(object):
         self.model.eval()
         with torch.no_grad():
             for i, (x,y) in enumerate(self.dataloader):
-                print(x.squeeze().size())
                 # resize to (batch,feature,weight,height)
                 x = x.view(-1, 2, 144, 144)
                 y = y.view(-1, 1, 144, 144)
@@ -202,7 +204,7 @@ class Solver(object):
                 x = x.float().to(self.device)
                 y = y.float().to(self.device)
                 # predict
-                pred = self.model.compute_forward(x)
+                pred = self.model(x)
                 pred = pred/torch.max(pred)
                 metric_x = self.metric_func(x, y)
                 metric_pred = self.metric_func(pred, y)
