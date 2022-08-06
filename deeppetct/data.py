@@ -3,7 +3,6 @@ import glob
 import numpy as np
 import torch
 import random
-import cv2
 
 from torch.utils.data import Dataset, DataLoader
 from deeppetct.preprocessing import *
@@ -30,11 +29,6 @@ class MyDataset(Dataset):
 
     def __getitem__(self, idx):
         pet10, ct, pet60 = self.pet10[idx], self.ct[idx], self.pet60[idx]
-        # resize ct into the same shape as pet10/pet60
-        ct = cv2.resize(ct, dsize=pet10.shape, interpolation=cv2.INTER_LINEAR)
-        pet10 = pet10.astype(float)
-        ct = ct.astype(float)
-        pet60 = pet60.astype(float)
         if self.transform:
             pet10, ct, pet60 = self.transform(pet10, ct, pet60)
         if (self.patch_size!=None) & (self.patch_n!=None):
@@ -58,17 +52,19 @@ class MyDataset(Dataset):
         pet60_patch = torch.Tensor(self.patch_n, self.patch_size, self.patch_size)
         height = pet10.size()[0]
         weight = pet10.size()[1]
-        tops = random.sample(range(height-self.patch_size), self.patch_n)
-        lefts = random.sample(range(weight-self.patch_size), self.patch_n)
-        for i in range(self.patch_n):
-            top = tops[i]
-            left = lefts[i]
+        i = 0
+        while i < self.patch_n:
+            top = random.sample(range(height-self.patch_size),1)[0]
+            left = random.sample(range(weight-self.patch_size),1)[0]
             pet10_p = pet10[top:top+self.patch_size, left:left+self.patch_size]
             ct_p = ct[top:top+self.patch_size, left:left+self.patch_size]
             pet60_p = pet60[top:top+self.patch_size, left:left+self.patch_size]
-            pet10ct_patch[i,0,:,:] = pet10_p
-            pet10ct_patch[i,1,:,:] = ct_p
-            pet60_patch[i,:,:] = pet60_p
+
+            if torch.max(ct_p) > torch.tensor([1e-3]):
+                pet10ct_patch[i,0,:,:] = pet10_p
+                pet10ct_patch[i,1,:,:] = ct_p
+                pet60_patch[i,:,:] = pet60_p
+                i += 1
         return pet10ct_patch, pet60_patch
 
 # build dataloader
