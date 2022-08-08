@@ -7,6 +7,8 @@ from . import CycleGAN
 from . import WGANVGG
 
 redcnn = REDCNN.REDCNN
-unet = UNET.UNET_TMI
+unet_mp = UNET.UNET_MP
+unet_tmi = UNET.UNET_TMI
+unet_mia = UNET.UNET_MIA
 cycle = CycleGAN.CycleGAN
 wganvgg = WGANVGG.WGANVGG
