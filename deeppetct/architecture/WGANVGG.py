@@ -63,7 +63,7 @@ class WGAN_VGG_FeatureExtractor(nn.Module):
         return out
 
 
-class WGAN_VGG(nn.Module):
+class WGANVGG(nn.Module):
     # referred from https://github.com/kuc2477/pytorch-wgan-gp
     def __init__(self, input_size=64):
         super(WGAN_VGG, self).__init__()

@@ -11,7 +11,7 @@ def get_acti(acti):
 class UNET_MP(nn.Module):
     # Ref: Anatomically aided PET image reconstruction using deep neural networks
     # Page 5, Figure 2(b)
-    # Conv2d(s=2) + ConvTranspose2d(s=2)
+    # Conv2d(stride=2) + ConvTranspose2d(stride=2)
     # Not working, has overlapping artifacts
     def __init__(self):
         super(UNET_MP, self).__init__()
@@ -67,20 +67,20 @@ class UNET_MP(nn.Module):
     def compute_loss(cls):
         return nn.MSELoss(reduction='sum')
 
-
 class UNET_MIA(nn.Module):
     # Ref: Towards lower-dose PET using physics-based uncertainty-aware 
     # multimodal learning with robustness to out-of-distribution data
     # Page 102187, Figure 2
-    # Maxpooling(s=2) + Upsampling
+    # Maxpooling(stride=2) + Upsampling(factor=2)
     def __init__(self):
         super(UNET_MIA, self).__init__()
         # mode, in_channel, out_channel, kernel_size, stride, padding, acti
         self.kernel_size = 3
         self.padding = 1
         self.acti = 'relu'
-        # encoder
+        # fuse PET and CT with 1x1 kernel
         self.layer1 = ConvBlock('conv',2,1,1,1,0,self.acti)
+        # encoder
         self.layer2 = ConvBlock('conv',1,64,self.kernel_size,1,self.padding,self.acti)
         self.layer3 = ConvBlock('conv',64,64,self.kernel_size,1,self.padding,self.acti)
         self.layer4 = Down('maxpool',kernel_size=2,stride=2,padding=0)
@@ -134,37 +134,54 @@ class UNET_MIA(nn.Module):
     def compute_loss(cls):
         return nn.MSELoss(reduction='sum')
 
-
 class UNET_TMI(nn.Module):
     # 3D Auto-Context-Based Locality Adaptive Multi-Modality GANs for PET Synthesis
     # Page 1311, Figure 3
-    # Conv2d(s=2) + Upsampling
+    # Conv2d(stride=2) + Upsampling(factor=2)
     def __init__(self):
         super(UNET_TMI, self).__init__()
         # mode, in_channel, out_channel, kernel_size, stride, padding, acti
-        self.kernel_size = 5
-        self.padding = 2
+        self.kernel_size = 3
+        self.padding = 1
+        self.acti = 'relu'
+        # fuse PET and CT with 1x1 kernel
+        self.layer1 = ConvBlock('conv',2,1,1,1,0,self.acti)
         # encoder
-        self.cb1  = ConvBlock('conv', 2,  16, self.kernel_size, 1, self.padding,'relu')
-        self.cb2  = ConvBlock('conv', 16, 16, self.kernel_size, 2, self.padding,'relu')
-        self.cb3  = ConvBlock('conv', 16, 32, self.kernel_size, 1, self.padding,'relu')
-        self.cb4  = ConvBlock('conv', 32, 32, self.kernel_size, 2, self.padding,'relu')
-        self.cb5  = ConvBlock('conv', 32, 64, self.kernel_size, 1, self.padding,'relu')
-        self.cb6  = ConvBlock('conv', 64, 128,self.kernel_size, 2, self.padding,'relu')
+        self.layer2 = ConvBlock('conv',1,64,self.kernel_size,1,self.padding,self.acti)
+        self.layer3 = Down('conv',64,128,self.kernel_size,2,self.padding,self.acti)
+        self.layer4 = Down('conv',128,256,self.kernel_size,2,self.padding,self.acti)
+        self.layer5 = Down('conv',256,512,self.kernel_size,2,self.padding,self.acti)
+        self.layer6 = Down('conv',512,512,self.kernel_size,2,self.padding,self.acti)
         # decoder
-        self.cb7  = ConvBlock('trans',128,64, self.kernel_size, 2, self.padding,'relu')
-        self.cb8  = ConvBlock('conv', 64, 64, self.kernel_size, 1, self.padding,'relu')
-        self.cb9  = ConvBlock('conv', 64, 64, self.kernel_size, 1, self.padding,'relu')
-        self.cb10 = ConvBlock('trans',64, 32, self.kernel_size, 2, self.padding,'relu')
-        self.cb11 = ConvBlock('conv', 32, 32, self.kernel_size, 1, self.padding,'relu')
-        self.cb12 = ConvBlock('conv', 32, 32, self.kernel_size, 1, self.padding,'relu')      
-        self.cb13 = ConvBlock('trans',32, 16, self.kernel_size, 2, self.padding,'relu')
-        self.cb14 = ConvBlock('conv', 16, 16, self.kernel_size, 1, self.padding,'relu')
-        self.cb15 = ConvBlock('conv', 16, 16, self.kernel_size, 1, self.padding,'relu')
-        self.cb16 = ConvBlock('conv', 16, 1,  self.kernel_size, 1, self.padding,'relu')
-
-    def forward(self):
-        return True
+        self.layer7 = Up('bilinear')
+        self.layer8 = ConvBlock('conv',512,512,self.kernel_size,1,self.padding,self.acti)
+        self.layer9 = Up('bilinear')
+        self.layer10 = ConvBlock('conv',1024,256,self.kernel_size,1,self.padding,self.acti)
+        self.layer11 = Up('bilinear')
+        self.layer12 = ConvBlock('conv',512,128,self.kernel_size,1,self.padding,self.acti)
+        self.layer13 = Up('bilinear')
+        self.layer14 = ConvBlock('conv',256,64,self.kernel_size,1,self.padding,self.acti)
+        self.layer15 = ConvBlock('conv',128,1,self.kernel_size,1,self.padding,self.acti)
+        
+    def forward(self, x):
+        out = self.layer2(self.layer1(x))
+        res1 = out
+        out = self.layer3(out)
+        res2 = out
+        out = self.layer4(out)
+        res3 = out
+        out = self.layer5(out)
+        res4 = out
+        out = self.layer8(self.layer7(self.layer6(out)))
+        out = torch.cat([res4, out], dim=1)
+        out = self.layer10(self.layer9(out))
+        out = torch.cat([res3, out], dim=1)
+        out = self.layer12(self.layer11(out))
+        out = torch.cat([res2, out], dim=1)
+        out = self.layer14(self.layer13(out))
+        out = torch.cat([res1, out], dim=1)
+        out = self.layer15(out)
+        return out
 
     @ classmethod
     def compute_loss(cls):
@@ -212,10 +229,42 @@ class Up(nn.Module):
         if mode == 'trans':
             self.up = ConvBlock('trans', in_channels, out_channels, kernel_size, stride, padding, acti)
         elif mode == 'bilinear':
-            self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+            self.up = nn.Upsample(scale_factor=2, mode='bilinear')
         else:
             print('[trans] or [bilinear]')
             sys.exit(0)
     
     def forward(self, x):
         return self.up(x)
+
+class SA(nn.Module):
+    # Self attention layer
+    def __init__(self,in_dim):
+        super(SA,self).__init__()
+        
+        self.query_conv = nn.Conv2d(in_channels = in_dim , out_channels = in_dim//8 , kernel_size= 1)
+        self.key_conv = nn.Conv2d(in_channels = in_dim , out_channels = in_dim//8 , kernel_size= 1)
+        self.value_conv = nn.Conv2d(in_channels = in_dim , out_channels = in_dim , kernel_size= 1)
+        self.gamma = nn.Parameter(torch.zeros(1))
+        self.softmax  = nn.Softmax(dim=-1)
+    
+    def forward(self, x):
+        """
+            inputs :
+                x : input feature maps(B X C X W X H)
+            returns :
+                out : self attention value + input feature 
+                attention: B X N X N (N is Width*Height)
+        """
+        batch_size, C, width, height = x.size()
+        proj_query  = self.query_conv(x).view(batch_size,-1,width*height).permute(0,2,1) # B X CX(N)
+        proj_key =  self.key_conv(x).view(batch_size,-1,width*height) # B X C x (*W*H)
+        energy =  torch.bmm(proj_query,proj_key) # transpose check
+        attention = self.softmax(energy) # BX (N) X (N) 
+        proj_value = self.value_conv(x).view(batch_size,-1,width*height) # B X C X N
+
+        out = torch.bmm(proj_value,attention.permute(0,2,1) )
+        out = out.view(batch_size,C,width,height)
+        
+        out = self.gamma*out + x
+        return out

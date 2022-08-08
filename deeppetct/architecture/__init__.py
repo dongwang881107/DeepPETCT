@@ -1,14 +1,12 @@
 
-__all__ = ["RED_CNN", "SA_UNET", "UNET", "CycleGAN" ,"WGAN_VGG"]
+__all__ = ["REDCNN", "UNET", "CycleGAN" ,"WGANVGG"]
 
-from . import RED_CNN
+from . import REDCNN
 from . import UNET
 from . import CycleGAN
-from . import WGAN_VGG
-from . import SA_UNET
+from . import WGANVGG
 
-redcnn = RED_CNN.RED_CNN
-saunet = SA_UNET.SA_UNET
-unet = UNET.UNET_MIA
+redcnn = REDCNN.REDCNN
+unet = UNET.UNET_TMI
 cycle = CycleGAN.CycleGAN
-wganvgg = WGAN_VGG.WGAN_VGG
+wganvgg = WGANVGG.WGANVGG

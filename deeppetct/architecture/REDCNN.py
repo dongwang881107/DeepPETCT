@@ -8,29 +8,22 @@ def get_acti(acti):
         ['leaky_relu', nn.LeakyReLU(negative_slope=0.01)],
     ])[acti]
 
-class SA_UNET(nn.Module):
-    def __init__(self):
-        super(SA_UNET, self).__init__()
-        # mode, in_channel, out_channel, kernel_size, stride, padding, acti
-        self.cb1 = ConvBlock('conv',2,16,5,1,'same','relu')
-        self.cb2 = ConvBlock('conv',16,16,5,2,'valid','relu')
-        self.cb3 = ConvBlock('conv',16,32,5,1,'same','relu')
-        self.cb4 = ConvBlock('conv',32,32,5,2,'valid','relu')
-        self.cb5 = ConvBlock('conv',32,64,5,1,'same','relu')
-        self.cb6 = ConvBlock('conv',64,128,5,2,'valid','relu')
+class REDCNN(nn.Module):
+    def __init__(self, out_ch=96, kernel_size=5, stride=1, padding=0):
+        super(REDCNN, self).__init__()
+        self.conv1 = nn.Conv2d(2, out_ch, kernel_size=kernel_size, stride=stride, padding=padding)
+        self.conv2 = nn.Conv2d(out_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding)
+        self.conv3 = nn.Conv2d(out_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding)
+        self.conv4 = nn.Conv2d(out_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding)
+        self.conv5 = nn.Conv2d(out_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding)
 
-        self.ab = Self_Attn(128,'relu')
+        self.tconv1 = nn.ConvTranspose2d(out_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding)
+        self.tconv2 = nn.ConvTranspose2d(out_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding)
+        self.tconv3 = nn.ConvTranspose2d(out_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding)
+        self.tconv4 = nn.ConvTranspose2d(out_ch, out_ch, kernel_size=kernel_size, stride=stride, padding=padding)
+        self.tconv5 = nn.ConvTranspose2d(out_ch, 1, kernel_size=kernel_size, stride=stride, padding=padding)
 
-        self.cb7 = ConvBlock('trans',128,64,5,2,'valid','relu')
-        self.cb8 = ConvBlock('conv',64,64,5,1,'same','relu')
-        self.cb9 = ConvBlock('conv',64,64,5,1,'same','relu')
-        self.cb10 = ConvBlock('trans',64,32,5,2,'valid','relu')
-        self.cb11 = ConvBlock('conv',32,32,5,1,'same','relu')
-        self.cb12 = ConvBlock('conv',32,32,5,1,'same','relu')      
-        self.cb13 = ConvBlock('trans',32,16,5,2,'valid','relu')
-        self.cb14 = ConvBlock('conv',16,16,5,1,'same','relu')
-        self.cb15 = ConvBlock('conv',16,16,5,1,'same','relu')
-        self.cb16 = ConvBlock('conv',16,1,5,1,'same','relu')
+        self.relu = nn.ReLU()
 
     def forward(self, x):
         # encoder
@@ -64,14 +57,12 @@ class ConvBlock(nn.Module):
         if mode == 'conv':
             self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding)
         elif mode == 'trans':
-            self.conv = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding)
+            self.conv = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding, output_padding=1)
         else:
-            print('[conv] or [trans] only!')
+            print('[conv] or [trans]')
             sys.exit(0)
-
         self.bn = nn.BatchNorm2d(out_channels)
         self.acti = get_acti(acti)
-
         self.blocks = nn.Sequential(
             self.conv,
             self.bn,
@@ -82,38 +73,34 @@ class ConvBlock(nn.Module):
         x = self.blocks(x)
         return x
 
-
-
-class Self_Attn(nn.Module):
-    """ Self attention Layer"""
-    def __init__(self,in_dim,activation):
-        super(Self_Attn,self).__init__()
-        self.chanel_in = in_dim
-        self.activation = activation
+class SA(nn.Module):
+    # Self attention layer
+    def __init__(self,in_dim):
+        super(SA,self).__init__()
         
         self.query_conv = nn.Conv2d(in_channels = in_dim , out_channels = in_dim//8 , kernel_size= 1)
         self.key_conv = nn.Conv2d(in_channels = in_dim , out_channels = in_dim//8 , kernel_size= 1)
         self.value_conv = nn.Conv2d(in_channels = in_dim , out_channels = in_dim , kernel_size= 1)
         self.gamma = nn.Parameter(torch.zeros(1))
-
-        self.softmax  = nn.Softmax(dim=-1) #
-    def forward(self,x):
+        self.softmax  = nn.Softmax(dim=-1)
+    
+    def forward(self, x):
         """
             inputs :
-                x : input feature maps( B X C X W X H)
+                x : input feature maps(B X C X W X H)
             returns :
                 out : self attention value + input feature 
                 attention: B X N X N (N is Width*Height)
         """
-        m_batchsize,C,width ,height = x.size()
-        proj_query  = self.query_conv(x).view(m_batchsize,-1,width*height).permute(0,2,1) # B X CX(N)
-        proj_key =  self.key_conv(x).view(m_batchsize,-1,width*height) # B X C x (*W*H)
+        batch_size, C, width, height = x.size()
+        proj_query  = self.query_conv(x).view(batch_size,-1,width*height).permute(0,2,1) # B X CX(N)
+        proj_key =  self.key_conv(x).view(batch_size,-1,width*height) # B X C x (*W*H)
         energy =  torch.bmm(proj_query,proj_key) # transpose check
         attention = self.softmax(energy) # BX (N) X (N) 
-        proj_value = self.value_conv(x).view(m_batchsize,-1,width*height) # B X C X N
+        proj_value = self.value_conv(x).view(batch_size,-1,width*height) # B X C X N
 
         out = torch.bmm(proj_value,attention.permute(0,2,1) )
-        out = out.view(m_batchsize,C,width,height)
+        out = out.view(batch_size,C,width,height)
         
         out = self.gamma*out + x
-        return out,attention
+        return out
