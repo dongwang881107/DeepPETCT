@@ -185,6 +185,9 @@ class Solver(object):
         if os.path.exists(checkpoint_path):
             state = torch.load(checkpoint_path, map_location=self.device)
             self.model.load_state_dict(state['model'])
+        else:
+            print('Checkpoint not exist!')
+            sys.exit(0)
 
         # multi-gpu testing and move model to device
         if len(self.device_ids)>1:

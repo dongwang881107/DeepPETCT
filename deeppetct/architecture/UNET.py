@@ -15,9 +15,10 @@ class UNET_MP(nn.Module):
     # Not working, has overlapping artifacts
     def __init__(self):
         super(UNET_MP, self).__init__()
+        print('UNET_MP: UNET in MP paper')
         # mode, in_channel, out_channel, kernel_size, stride, padding, acti
-        self.kernel_size = 7
-        self.padding = 3
+        self.kernel_size = 3
+        self.padding = 1
         self.acti = 'relu'
         # encoder
         self.layer1 = ConvBlock('conv',2,16,self.kernel_size,1,self.padding,self.acti)
@@ -74,6 +75,7 @@ class UNET_MIA(nn.Module):
     # Maxpooling(stride=2) + Upsampling(factor=2)
     def __init__(self):
         super(UNET_MIA, self).__init__()
+        print('UNET_MIA: UNET in MIA paper')
         # mode, in_channel, out_channel, kernel_size, stride, padding, acti
         self.kernel_size = 3
         self.padding = 1
@@ -137,9 +139,11 @@ class UNET_MIA(nn.Module):
 class UNET_TMI(nn.Module):
     # 3D Auto-Context-Based Locality Adaptive Multi-Modality GANs for PET Synthesis
     # Page 1311, Figure 3
+    # Generator in GAN
     # Conv2d(stride=2) + Upsampling(factor=2)
     def __init__(self):
         super(UNET_TMI, self).__init__()
+        print('UNET_TMI: UNET in TMI paper')
         # mode, in_channel, out_channel, kernel_size, stride, padding, acti
         self.kernel_size = 3
         self.padding = 1
