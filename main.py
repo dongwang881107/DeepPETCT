@@ -30,9 +30,10 @@ def main(args):
                             patch_n=args.patch_n if args.mode=='train' else None, 
                             patch_size=args.patch_size if args.mode=='train' else None)
     # determine neural networks
-    model = deeparch.redcnn_bn()
+    model = deeparch.unet_mia()
     if args.mode == 'train':
         summary(model, (2,144,144))
+        print(model)
     # determine metric functions
     metric_func = MetricsCompose([ComputeRMSE(), ComputePSNR(), ComputeSSIM()])
     # build solver

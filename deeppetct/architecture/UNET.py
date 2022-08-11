@@ -197,20 +197,15 @@ class ConvBlock(nn.Module):
         if mode == 'conv':
             self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding)
         elif mode == 'trans':
-            self.conv = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding, output_padding=1)
+            self.conv = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding)
         else:
             print('[conv] or [trans]')
             sys.exit(0)
         self.bn = nn.BatchNorm2d(out_channels)
         self.acti = get_acti(acti)
-        self.blocks = nn.Sequential(
-            self.conv,
-            self.bn,
-            self.acti
-        )
 
     def forward(self, x):
-        x = self.blocks(x)
+        x = self.acti(self.bn(self.conv(x)))
         return x
 
 class Down(nn.Module):

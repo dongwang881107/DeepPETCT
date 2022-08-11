@@ -138,7 +138,6 @@ class REDCNN_SA(nn.Module):
     def compute_loss(cls):
         return nn.MSELoss(reduction='sum')
 
-
 class ConvBlock(nn.Module):
     def __init__(self, mode, in_channels, out_channels, kernel_size, stride, padding, acti):
         super().__init__()
@@ -151,14 +150,9 @@ class ConvBlock(nn.Module):
             sys.exit(0)
         self.bn = nn.BatchNorm2d(out_channels)
         self.acti = get_acti(acti)
-        self.blocks = nn.Sequential(
-            self.conv,
-            self.bn,
-            self.acti
-        )
 
     def forward(self, x):
-        x = self.blocks(x)
+        x = self.acti(self.bn(self.conv(x)))
         return x
 
 class SelfAttenBlock(nn.Module):
