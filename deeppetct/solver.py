@@ -1,6 +1,7 @@
 import time
 import numpy as np
 import torch
+import glob
 import matplotlib.pyplot as plt
 
 from deeppetct.preprocessing import *
@@ -12,13 +13,12 @@ class Solver(object):
 
         # load shared parameters
         self.save_path = args.save_path
-        self.mode = args.mode
         self.dataloader = dataloader
+        self.mode = args.mode
         self.args = args
 
         if self.mode == 'train':
             # load training parameters
-            self.save_path = args.save_path
             self.checkpoint = args.checkpoint
             self.patch_size = args.patch_size
             self.patch_n = args.patch_n
@@ -46,7 +46,11 @@ class Solver(object):
             self.model = model
         else:
             # load plotting parameters
-            self.index = args.index
+            self.case_idx = args.case_idx
+            self.trans_idx = args.trans_idx
+            self.sag_idx = args.sag_idx
+            self.coron_idx = args.coron_idx
+            self.data_path = args.data_path
             self.loss_name = args.loss_name
             self.valid_metric_name = args.valid_metric_name
             self.test_metric_name = args.test_metric_name
@@ -238,7 +242,6 @@ class Solver(object):
         fs = 18
         lw = 2.0
         cmap = 'gray_r'
-        fraction = 0.045
 
         # plot training loss
         if self.not_plot_loss:
@@ -269,44 +272,112 @@ class Solver(object):
                 plt.legend()
                 self._plot(fig, 'valid_'+keys[j].lower())
 
-        # plot predictions
+        # plot predictions in transverse/sagittal/coronal plane 
         if self.not_plot_pred:
             pred_path = os.path.join(self.save_path, 'stat', self.pred_name+'.npy')
-            test_metric_path = os.path.join(self.save_path, 'stat', self.test_metric_name+'.npy')
             pred = np.load(pred_path)
-            test_metric = np.load(test_metric_path, allow_pickle='TRUE')
             data_name = self.dataloader.dataset.get_path()
-            if self.index == []:
-                self.index = range(len(self.dataloader))
-            for i, (x,y) in enumerate(self.dataloader):
-                if i in self.index:
+            # get case number
+            all_cases = []
+            for name in data_name[0]:
+                case_name = name.split('/')[-3]
+                if case_name not in all_cases:
+                    all_cases.append(case_name)
+            # plot case by case
+            for idx in self.case_idx:
+                if idx in range(len(all_cases)):
                     # load data
-                    pet10 = x.squeeze()[0,:,:].numpy()
-                    pet60 = y.squeeze().numpy()
-                    p = pred[i,:,:,:].squeeze()
-                    ct = np.load(data_name[1][i])
-                    # normalize data
-                    ct = ct/np.max(ct)
-                    p = p/np.max(p)
-                    data = (pet10,ct,p,pet60)
-                    title = ['10s', 'CT', 'Proposed', '60s']
-                    fig = plt.figure(figsize=(15,4))
-                    for j in range(4):
-                        ax = fig.add_subplot(1,4,j+1)
-                        im = ax.imshow(data[j], cmap='gray' if j==1 else cmap)
-                        ax.set_title(title[j], fontsize=fs)
-                        ax.axis('off')
-                        fig.colorbar(im, ax=ax, fraction=fraction)
-                    title_name = 'Low Dose: '
-                    for key in test_metric[0][i].keys():
-                        title_name += key+':'+"{:.4f}".format(test_metric[0][i][key])+', '
-                    title_name += '\n Proposed: '
-                    for key in test_metric[1][i].keys():
-                        title_name += key+':'+"{:.4f}".format(test_metric[1][i][key])+', '
-                    plt.suptitle(title_name, fontsize=10, y=0.15)
-                    fig_name = data_name[0][i].split('/')[-3]+ '_' + \
-                               data_name[0][i].split('/')[-1].split('.')[0]
-                    self._plot(fig, fig_name)
+                    case_path = os.path.join(self.data_path, 'testing', all_cases[idx])
+                    pet10_path = sorted(glob.glob(os.path.join(case_path, '10s/*.npy')))
+                    ct_path = sorted(glob.glob(os.path.join(case_path, 'CT/*.npy')))
+                    pet60_path = sorted(glob.glob(os.path.join(case_path, '60s/*.npy')))
+                    case_len = len(pet10_path)
+                    pet10_3d = np.zeros((case_len, 144, 144))
+                    ct_3d = np.zeros((case_len, 512, 512))
+                    pet60_3d = np.zeros((case_len, 144, 144))
+                    start_idx = data_name[0].index(pet10_path[0])
+                    p_3d = np.squeeze(pred)[start_idx:start_idx+case_len,:,:]
+                    for i in range(case_len):
+                        pet10_3d[i,:,:] = np.load(pet10_path[i])
+                        ct_3d[i,:,:] = np.load(ct_path[i])
+                        pet60_3d[i,:,:] = np.load(pet60_path[i])
+                    # plot transverse plane
+                    if len(self.trans_idx) > 0:
+                        test_metric_path = os.path.join(self.save_path, 'stat', self.test_metric_name+'.npy')
+                        test_metric = np.load(test_metric_path, allow_pickle='TRUE')
+                        for i in self.trans_idx:
+                            pet10_trans = pet10_3d[i,:,:]
+                            ct_trans = ct_3d[i,:,:]
+                            pet60_trans = pet60_3d[i,:,:]
+                            p_trans = p_3d[i,:,:]
+                            pet10_trans = pet10_trans/np.max(pet10_trans)
+                            ct_trans = ct_trans/np.max(ct_trans)
+                            pet60_trans = pet60_trans/np.max(pet60_trans)
+                            p_trans = p_trans/np.max(p_trans)
+                            data = (pet10_trans,ct_trans,p_trans,pet60_trans)
+                            title = ['10s', 'CT', 'Proposed', '60s']
+                            fig = plt.figure(figsize=(15,4))
+                            for j in range(4):
+                                ax = fig.add_subplot(1,4,j+1)
+                                im = ax.imshow(data[j], cmap='gray' if j==1 else cmap)
+                                ax.set_title(title[j], fontsize=fs)
+                                ax.axis('off')
+                                fig.colorbar(im, ax=ax, fraction=0.045)
+                            caption = 'Low Dose: '
+                            for key in test_metric[0][i].keys():
+                                caption += key+':'+"{:.4f}".format(test_metric[0][i][key])+', '
+                            caption = caption[:-2]
+                            caption += '\nProposed: '
+                            for key in test_metric[1][i].keys():
+                                caption += key+':'+"{:.4f}".format(test_metric[1][i][key])+', '
+                            caption = caption[:-2]
+                            plt.suptitle(caption, fontsize=10, y=0.15)
+                            fig_name = all_cases[idx]+ '_' + \
+                                    pet10_path[i].split('/')[-1].split('.')[0]
+                            self._plot(fig, fig_name)
+                    # plot sagittal plane
+                    if len(self.sag_idx) > 0:
+                        for i in self.sag_idx:
+                            pet10_sag = np.flipud(pet10_3d[:,i,:])
+                            pet60_sag = np.flipud(pet60_3d[:,i,:])
+                            p_sag = np.flipud(p_3d[:,i,:])
+                            pet10_sag = pet10_sag/np.max(pet10_sag) 
+                            pet60_sag = pet60_sag/np.max(pet60_sag)
+                            p_sag = p_sag/np.max(p_sag)  
+                            data = (pet10_sag,p_sag,pet60_sag)
+                            title = ['10s', 'Proposed', '60s']
+                            fig = plt.figure(figsize=(15,6))
+                            for j in range(3):
+                                ax = fig.add_subplot(1,3,j+1)
+                                im = ax.imshow(data[j], cmap=cmap)
+                                ax.set_title(title[j], fontsize=fs)
+                                ax.axis('off')
+                                fig.colorbar(im, ax=ax, fraction=0.065)
+                            fig_name = all_cases[idx]+ '_' + 'sag' + str(i)
+                            self._plot(fig, fig_name)
+                    # plot coronal plane
+                    if len(self.coron_idx) > 0:
+                        for i in self.coron_idx:
+                            pet10_coron = np.flipud(pet10_3d[:,:,i])
+                            pet60_coron = np.flipud(pet60_3d[:,:,i])
+                            p_coron = np.flipud(p_3d[:,:,i])
+                            pet10_coron = pet10_coron/np.max(pet10_coron)
+                            pet60_coron = pet60_coron/np.max(pet60_coron)
+                            p_coron = p_coron/np.max(p_coron)
+                            data = (pet10_coron,p_coron,pet60_coron)
+                            title = ['10s', 'Proposed', '60s']
+                            fig = plt.figure(figsize=(15,6))
+                            for j in range(3):
+                                ax = fig.add_subplot(1,3,j+1)
+                                im = ax.imshow(data[j], cmap=cmap)
+                                ax.set_title(title[j], fontsize=fs)
+                                ax.axis('off')
+                                fig.colorbar(im, ax=ax, fraction=0.065)
+                            fig_name = all_cases[idx]+ '_' + 'coron' + str(i)
+                            self._plot(fig, fig_name)
+                else:
+                    print('WRONG CASE NUMBER!')
+                    sys.exit(0)
         print('Total plotting time is {:.2f} s'.format(time.time()-start_time))
         print('{:-^118s}'.format('Done!'))
 

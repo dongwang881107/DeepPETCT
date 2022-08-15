@@ -128,9 +128,9 @@ class REDCNN_SA(nn.Module):
         res2 = out
         # decoder
         out = self.layer6(self.sa(self.layer5(out)))
-        out += res2
+        out = out + res2
         out = self.layer8(self.layer7(out))
-        out += res1
+        out = out + res1
         out = self.layer10(self.layer9(out))
         return out
 
