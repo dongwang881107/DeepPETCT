@@ -23,9 +23,9 @@ def batch_metric(x, y, name, reduction='sum'):
         elif name == 'RMSE':
             metric += compute_RMSE(x_slice, y_slice)
         elif name == 'PSNR':
-            metric += compute_PSNR(x_slice, y_slice)
+            metric += compute_PSNR(x_slice, y_slice, data_range=1.0)
         elif name == 'SSIM':
-            metric += compute_SSIM(x_slice, y_slice)
+            metric += compute_SSIM(x_slice, y_slice, multichannel=False, data_range=1.0)
         else:
             print('MSE | RMSE | PSNR | SSIM')
             sys.exit(0)

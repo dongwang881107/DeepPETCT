@@ -23,11 +23,12 @@ class Solver(object):
             self.patch_size = args.patch_size
             self.patch_n = args.patch_n
             self.num_epochs = args.num_epochs
+            self.num_iters = args.num_iters
             self.scheduler = args.scheduler
             self.lr = args.lr
-            self.gamma = args.gamma
+            self.lambda1 = args.lambda1
+            self.lambda2 = args.lambda2
             self.device_ids = args.device_ids
-            self.decay_iters = args.decay_iters
             self.print_iters = args.print_iters
             self.save_iters = args.save_iters
             self.metric_func = metric_func
@@ -66,16 +67,19 @@ class Solver(object):
         print('{:-^118s}'.format('Training start!'))
 
         # set up optimizer and scheduler
-        optim, scheduler = set_optim(self.model, self.scheduler, self.gamma, self.lr, self.decay_iters)
+        gen_optim, dis_optim, gen_sched, dis_sched = set_optim(self.model, self.lr, self.scheduler)
         
         # load checkpoint if exists
         checkpoint_path = os.path.join(self.save_path, 'checkpoint', self.checkpoint+'.pkl')
         if os.path.exists(checkpoint_path):
             print('{: ^118s}'.format('Loading checkpoint ...'))
             state = torch.load(checkpoint_path, map_location=self.device)
-            self.model.load_state_dict(state['model'])
-            optim.load_state_dict(state['optimizer'])
-            scheduler.load_state_dict(state['scheduler'])
+            self.model.generator.load_state_dict(state['generator'])
+            self.model.discriminator.load_state_dict(state['discriminator'])
+            gen_optim.load_state_dict(state['gen_optim'])
+            dis_optim.load_state_dict(state['dis_optim'])
+            gen_sched.load_state_dict(state['gen_sched'])
+            dis_sched.load_state_dict(state['dis_sched'])
             start_epoch = state['epoch']
             print('{: ^118s}'.format('Successfully load checkpoint! Training from epoch {}'.format(start_epoch)))
         else:
@@ -85,9 +89,6 @@ class Solver(object):
         # multi-gpu training and move model to device
         if len(self.device_ids)>1:
             self.model = nn.DataParallel(self.model)
-            loss_func = self.model.module.compute_loss()
-        else:
-            loss_func = self.model.compute_loss()
         self.model = self.model.to(self.device)
 
         # compute total patch number
@@ -103,70 +104,111 @@ class Solver(object):
         min_valid_loss = np.inf
         for epoch in range(start_epoch, self.num_epochs):
             # training
-            train_loss = 0.0
-            for (x,y) in self.dataloader[0]:
+            dis_train_loss = 0.0
+            gen_train_loss = 0.0
+            grad_train_loss = 0.0
+            perc_train_loss = 0.0
+            wass_train_loss = 0.0
+            for i, (x,real) in enumerate(self.dataloader[0]):
                 # move data to device
                 x = x.float().to(self.device)
-                y = y.float().to(self.device)
+                real = real.float().to(self.device)
                 # patch training/resize to (batch,feature,weight,height)
                 if (self.patch_size!=None) & (self.patch_n!=None):
                     x = x.view(-1, 2, self.patch_size, self.patch_size)
-                    y = y.view(-1, 1, self.patch_size, self.patch_size)
-                # zero the gradients
-                self.model.train()
-                self.model.zero_grad()
-                optim.zero_grad()
-                # forward propagation
-                pred = self.model(x)
-                # compute loss
-                loss = loss_func(pred, y)/x.size()[0]
-                # backward propagation
-                loss.backward()
-                # update weights
-                optim.step()
+                    real = real.view(-1, 1, self.patch_size, self.patch_size)
+                # train discriminator
+                self.model.discriminator.train()
+                for _ in range(self.num_iters):
+                    self.model.discriminator.zero_grad()
+                    dis_optim.zero_grad()
+                    # forward propagation
+                    fake = self.model.generator(x).detach()
+                    d_fake = self.model.discriminator(fake)
+                    d_real = self.model.discriminator(real)
+                    # compute loss
+                    dis_loss, grad_loss = self.model.discriminator_loss(fake, real, d_fake, d_real, self.lambda2)
+                    # backward propagation
+                    dis_loss.backward(retain_graph=True)
+                    # update weights
+                    dis_optim.step()
                 # update statistics
-                train_loss += loss.item()*x.size()[0]
-            # update statistics (average over batch)
-            total_train_loss.append(train_loss/total_train_data)
+                dis_train_loss += dis_loss.item()
+                grad_train_loss += grad_loss.item()
+                
+                # train generator
+                self.model.generator.train()
+                self.model.generator.zero_grad()
+                gen_optim.zero_grad()
+                # forward propagation
+                fake = self.model.generator(x)
+                d_fake = self.model.discriminator(fake)
+                # compute loss
+                gen_loss, perc_loss = self.model.generator_loss(fake, real, d_fake, self.lambda1)
+                # backward propagation
+                gen_loss.backward()
+                # update weights
+                gen_optim.step()
+                # update statistics
+                gen_train_loss += gen_loss.item()
+                perc_train_loss += perc_loss.item()
+                wass_train_loss += dis_loss.item()-grad_loss.item() + gen_loss.item()-perc_loss.item()
+            # update statistics
+            total_train_loss.append((dis_train_loss, gen_train_loss, grad_train_loss, perc_train_loss, wass_train_loss))
             # update scheduler    
-            scheduler.step()
+            dis_sched.step()
+            gen_sched.step()
             
             # validation
-            valid_loss = 0.0
+            dis_valid_loss = 0.0
+            gen_valid_loss = 0.0
+            grad_valid_loss = 0.0
+            perc_valid_loss = 0.0
+            wass_valid_loss = 0.0
             valid_metric = {}
-            self.model.eval()
+            self.model.generator.eval()
+            self.model.discriminator.eval()
             with torch.no_grad():
-                for i, (x,y) in enumerate(self.dataloader[1]):
+                for i, (x,real) in enumerate(self.dataloader[1]):
                     # move data to device
                     x = x.float().to(self.device)
-                    y = y.float().to(self.device)
+                    real = real.float().to(self.device)
                     # patch training/resize to (batch,feature,weight,height)
                     if (self.patch_size!=None) & (self.patch_n!=None):
                         x = x.view(-1, 2, self.patch_size, self.patch_size)
-                        y = y.view(-1, 1, self.patch_size, self.patch_size) 
+                        real = real.view(-1, 1, self.patch_size, self.patch_size) 
                     # forward propagation
-                    pred = self.model(x)
+                    fake = self.model.generator(x)
+                    d_fake = self.model.discriminator(fake)
+                    d_real = self.model.discriminator(real)
                     # compute loss
-                    loss = loss_func(pred, y)
+                    with torch.enable_grad():
+                        dis_loss, grad_loss = self.model.discriminator_loss(fake, real, d_fake, d_real, self.lambda2)
+                    gen_loss, perc_loss = self.model.generator_loss(fake, real, d_fake, self.lambda1)
                     # compute metric
-                    metric = self.metric_func(pred, y)
-                    valid_loss += loss.item()
+                    fake = fake/torch.max(fake)
+                    metric = self.metric_func(fake, real)
+                    dis_valid_loss += dis_loss.item()
+                    gen_valid_loss += gen_loss.item()
+                    grad_valid_loss += grad_loss.item()
+                    perc_valid_loss += perc_loss.item()
+                    wass_valid_loss += dis_loss.item()-grad_loss.item() + gen_loss.item()-perc_loss.item()
                     valid_metric = metric if i == 0 else {key:valid_metric[key]+metric[key] for key in metric.keys()}
             # update statistics (average over batch)
-            total_valid_loss.append(valid_loss/total_valid_data)
+            total_valid_loss.append((dis_valid_loss, gen_valid_loss, grad_valid_loss, perc_valid_loss, wass_valid_loss))
             total_valid_metric.append({key:valid_metric[key]/total_valid_data for key in valid_metric.keys()})
             # save best checkpoint
-            if min_valid_loss > valid_loss:
+            if min_valid_loss > gen_valid_loss:
                 print('{: ^118s}'.format('Validation loss decreased! Saving the checkpoint!'))
-                save_checkpoint(self.model, optim, scheduler, self.save_path, self.num_epochs)
-                min_valid_loss = valid_loss
+                save_checkpoint(self.model, dis_optim, gen_optim, dis_sched, gen_sched, self.save_path, self.num_epochs)
+                min_valid_loss = gen_valid_loss
 
             # print statictics
             if (epoch+1) % self.print_iters == 0:
                 print_stat(epoch, total_train_loss, total_valid_loss, total_valid_metric, start_time)
             # save checkpoints and statistics
             if (epoch+1) % self.save_iters == 0:
-                save_checkpoint(self.model, optim, scheduler, self.save_path, self.num_epochs, epoch=epoch+1)
+                save_checkpoint(self.model, dis_optim, gen_optim, dis_sched, gen_sched, self.save_path, self.num_epochs, epoch=epoch+1)
                 save_stat(total_train_loss, total_valid_loss, total_valid_metric, self.save_path, self.loss_name, self.metric_name)
 
         # save results
@@ -174,7 +216,7 @@ class Solver(object):
         print('Total training time is {:.2f} s'.format(time.time()-start_time))
         print('{:-^118s}'.format('Saving results!'))
         # save final checkpoint and statistics
-        save_checkpoint(self.model, optim, scheduler, self.save_path, self.num_epochs, epoch=self.num_epochs)
+        save_checkpoint(self.model, dis_optim, gen_optim, dis_sched, gen_sched, self.save_path, self.num_epochs, epoch=self.num_epochs)
         save_stat(total_train_loss, total_valid_loss, total_valid_metric, self.save_path, self.loss_name, self.metric_name)
 
         print('{:-^118s}'.format('Done!'))
@@ -187,8 +229,10 @@ class Solver(object):
         # load checkpoint if exists
         checkpoint_path = os.path.join(self.save_path, 'checkpoint', self.checkpoint+'.pkl')
         if os.path.exists(checkpoint_path):
+            print('{: ^118s}'.format('Loading checkpoint ...'))
             state = torch.load(checkpoint_path, map_location=self.device)
-            self.model.load_state_dict(state['model'])
+            self.model.generator.load_state_dict(state['generator'])
+            print('{: ^118s}'.format('Successfully load {}'.format(self.checkpoint)))
         else:
             print('Checkpoint not exist!')
             sys.exit(0)
@@ -197,40 +241,40 @@ class Solver(object):
         if len(self.device_ids)>1:
             self.model = nn.DataParallel(self.model)
         self.model = self.model.to(self.device)
-        
+
         # testing
-        total_metric_pred = []
+        total_metric_fake = []
         total_metric_x = []
-        self.model.eval()
+        self.model.generator.eval()
         with torch.no_grad():
-            for i, (x,y) in enumerate(self.dataloader):
+            for i, (x,real) in enumerate(self.dataloader):
                 # resize to (batch,feature,weight,height)
                 x = x.view(-1, 2, 144, 144)
-                y = y.view(-1, 1, 144, 144)
+                real = real.view(-1, 1, 144, 144)
                 # move data to device
                 x = x.float().to(self.device)
-                y = y.float().to(self.device)
+                real = real.float().to(self.device)
                 # predict
-                pred = self.model(x)
-                pred = pred/torch.max(pred)
-                metric_x = self.metric_func(x, y)
-                metric_pred = self.metric_func(pred, y)
+                fake = self.model.generator(x)
+                fake = fake/torch.max(fake)
+                metric_x = self.metric_func(x, real)
+                metric_pred = self.metric_func(fake, real)
                 total_metric_x.append(metric_x)
-                total_metric_pred.append(metric_pred)
+                total_metric_fake.append(metric_pred)
                 # save predictions
                 if i == 0:
-                    total_pred = pred
+                    total_fake = fake
                 else:
-                    total_pred = torch.cat((total_pred,pred),0)
+                    total_fake = torch.cat((total_fake,fake),0)
 
         # print results
-        print_metric(total_metric_x, total_metric_pred)
+        print_metric(total_metric_x, total_metric_fake)
         print('{:-^118s}'.format('Testing finished!'))
         print('Total testing time is {:.2f} s'.format(time.time()-start_time))
         # save results
         print('{:-^118s}'.format('Saving results!'))
-        save_pred(total_pred.cpu(), self.save_path, self.pred_name)
-        save_metric((total_metric_x, total_metric_pred), self.save_path, self.metric_name)
+        save_pred(total_fake.cpu(), self.save_path, self.pred_name)
+        save_metric((total_metric_x, total_metric_fake), self.save_path, self.metric_name)
         print('{:-^118s}'.format('Done!'))
 
     # plotting mode
@@ -247,13 +291,16 @@ class Solver(object):
         if self.not_plot_loss:
             loss_path = os.path.join(self.save_path, 'stat', self.loss_name+'.npy')
             total_loss = np.load(loss_path)
-            fig = plt.figure()
-            plt.xlabel('Epoch', fontsize=fs)
-            plt.ylabel('Training Loss', fontsize=fs)
-            for j in range(total_loss.shape[-1]):
-                plt.plot(total_loss[:,j], linewidth=lw)
-            plt.legend(['training','validation'])
-            self._plot(fig, self.loss_name)
+            title_names = ['Discriminator Loss', 'Generator Loss', 'Gradient Loss', 'Perceptual Loss', 'Wasserstein Loss']
+            loss_names = ['dis', 'gen', 'grad', 'perc', 'wass']
+            for i in range(len(title_names)):
+                fig = plt.figure()
+                plt.xlabel('Epoch', fontsize=fs)
+                plt.ylabel(title_names[i], fontsize=fs)
+                for j in range(total_loss.shape[0]):
+                    plt.plot(total_loss[j][:,i], linewidth=lw)
+                plt.legend(['training','validation'])
+                self._plot(fig, 'train_'+loss_names[i])
 
         # plot validation metric
         if self.not_plot_metric:

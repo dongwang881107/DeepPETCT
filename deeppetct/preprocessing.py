@@ -83,19 +83,34 @@ def optim_to(optim, device):
                         subparam._grad.data = subparam._grad.data.to(device)
 
 # set up optimizer and scheduler
-def set_optim(model, scheduler, gamma, lr, decay_iters):
-    optimizer = optim.Adam([{'params':model.parameters(),'lr':lr}])
-    if scheduler == 'step':
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=decay_iters, gamma=gamma)
+def set_optim(model, lr, scheduler):
+    gamma = 0.8
+    decay_iters = 10
+    b1 = 0.5
+    b2 = 0.99
+    gen_optimizer = optim.Adam(model.generator.parameters(), lr=lr, betas=(b1,b2))
+    dis_optimizer = optim.Adam(model.discriminator.parameters(), lr=lr, betas=(b1,b2))
+    if scheduler == 'none':
+        gamma = 1
+        decay_iters = 10000000
+        gen_scheduler = optim.lr_scheduler.StepLR(gen_optimizer, step_size=decay_iters, gamma=gamma)
+        dis_scheduler = optim.lr_scheduler.StepLR(dis_optimizer, step_size=decay_iters, gamma=gamma)
+    elif scheduler == 'step':
+        gen_scheduler = optim.lr_scheduler.StepLR(gen_optimizer, step_size=decay_iters, gamma=gamma)
+        dis_scheduler = optim.lr_scheduler.StepLR(dis_optimizer, step_size=decay_iters, gamma=gamma)
     elif scheduler == 'linear':
-        scheduler = optim.lr_scheduler.LinearLR(optimizer, start_factor=gamma, total_iters=decay_iters)
+        gen_scheduler = optim.lr_scheduler.LinearLR(gen_optimizer, start_factor=gamma, total_iters=decay_iters)
+        dis_scheduler = optim.lr_scheduler.LinearLR(dis_optimizer, start_factor=gamma, total_iters=decay_iters)
     elif scheduler == 'exp':
-        scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=gamma)
+        gen_scheduler = optim.lr_scheduler.ExponentialLR(gen_optimizer, gamma=gamma)
+        dis_scheduler = optim.lr_scheduler.ExponentialLR(dis_optimizer, gamma=gamma)
     elif scheduler == 'cos':
-        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, decay_iters, eta_min=1e-5)
+        gen_scheduler = optim.lr_scheduler.CosineAnnealingLR(gen_optimizer, decay_iters, eta_min=1e-5)
+        dis_scheduler = optim.lr_scheduler.CosineAnnealingLR(dis_optimizer, decay_iters, eta_min=1e-5)
     elif scheduler == 'reduce':
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=1000)
+        gen_scheduler = optim.lr_scheduler.ReduceLROnPlateau(gen_optimizer, 'min', patience=1000)
+        dis_scheduler = optim.lr_scheduler.ReduceLROnPlateau(dis_optimizer, 'min', patience=1000)
     else:
-        print('step | linear | exp | cos | reduce')
+        print('none | step | linear | exp | cos | reduce')
         sys.exit(0)
-    return optimizer, scheduler
+    return gen_optimizer, dis_optimizer, gen_scheduler, dis_scheduler

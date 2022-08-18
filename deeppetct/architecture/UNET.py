@@ -224,7 +224,7 @@ class Down(nn.Module):
 
 class Up(nn.Module):
     def __init__(self, mode, in_channels=None, out_channels=None, kernel_size=None, stride=None, padding=None, acti=None):
-        super().__init__()
+        super(ConvBlock, self).__init__()
         if mode == 'trans':
             self.up = ConvBlock('trans', in_channels, out_channels, kernel_size, stride, padding, acti)
         elif mode == 'bilinear':

@@ -140,7 +140,7 @@ class REDCNN_SA(nn.Module):
 
 class ConvBlock(nn.Module):
     def __init__(self, mode, in_channels, out_channels, kernel_size, stride, padding, acti):
-        super().__init__()
+        super(ConvBlock, self).__init__()
         if mode == 'conv':
             self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding)
         elif mode == 'trans':
