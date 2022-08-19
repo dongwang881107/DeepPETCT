@@ -3,6 +3,8 @@ import os
 import time
 import numpy as np
 import torch.nn as nn
+from torchsummary import summary
+
 
 '''
 PRINTING
@@ -12,6 +14,12 @@ def print_usage():
     return '''
     python {train.py, test.py, plot.py} [optional arguments]
     '''
+
+# print model
+def print_model(model, device_idx):
+    if len(device_idx) > 0:
+        model = model.cuda()
+    summary(model, (2,144,144))
 
 # print arguments
 def print_args(args):

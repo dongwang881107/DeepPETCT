@@ -1,6 +1,5 @@
 import argparse
 import warnings
-from torchsummary import summary
 
 from deeppetct.postprocessing import *
 from deeppetct.preprocessing import *
@@ -32,8 +31,7 @@ def main(args):
     # determine neural networks
     model = deeparch.redcnn_tmi()
     if args.mode == 'train':
-        summary(model, (2,144,144))
-        print(model)
+        print_model(model, args.device_idx)
     # determine metric functions
     metric_func = MetricsCompose([ComputeRMSE(), ComputePSNR(), ComputeSSIM()])
     # build solver
@@ -49,11 +47,11 @@ if __name__ == "__main__":
     # training paramters
     subparser_train = subparsers.add_parser('train', help='training mode')
     subparser_train.add_argument('--seed', type=int, default=1000, help='random seed')
-    subparser_train.add_argument('--device_ids', nargs='+', type=int, default=[], help='gpu numbers')
+    subparser_train.add_argument('--device_idx', nargs='+', type=int, default=[], help='gpu numbers')
     subparser_train.add_argument('--save_path', type=str, default='./test', help='saved path of the results')
     subparser_train.add_argument('--num_workers', type=int, default=0, help='number of workers used')
     subparser_train.add_argument('--log_name', type=str, default='log', help='name of the log file')
-    subparser_train.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct')
+    subparser_train.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/toy')
     subparser_train.add_argument('--batch_size', type=int, default=10, help='batch size per epoch')
     subparser_train.add_argument('--patch_n', type=int, default=2, help='number of patches extract from one image')
     subparser_train.add_argument('--patch_size', type=int, default=32, help='patch size')
@@ -71,8 +69,8 @@ if __name__ == "__main__":
     # testing parameters
     subparser_test = subparsers.add_parser('test', help='testing mode')
     subparser_test.add_argument('--save_path', type=str, default='./test', help='saved path of the results')
-    subparser_test.add_argument('--device_ids', nargs='+', type=int, default=[], help='gpu numbers')
-    subparser_test.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/')
+    subparser_test.add_argument('--device_idx', nargs='+', type=int, default=[], help='gpu numbers')
+    subparser_test.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/toy')
     subparser_test.add_argument('--num_workers', type=int, default=4, help='number of workers used')
     subparser_test.add_argument('--checkpoint', type=str, default='checkpoint_final', help='name of the checkpoint')
     subparser_test.add_argument('--log_name', type=str, default='log', help='name of the log file')
@@ -87,7 +85,7 @@ if __name__ == "__main__":
     subparser_plot.add_argument('--coron_idx', nargs='+', type=int, default=[], help='coronal plane index to be plotted')
     subparser_plot.add_argument('--num_workers', type=int, default=2, help='number of workers used')
     subparser_plot.add_argument('--save_path', type=str, default='./test', help='saved path of the results')
-    subparser_plot.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/')
+    subparser_plot.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/toy')
     subparser_plot.add_argument('--pred_name', type=str, default='test_pred', help='name of testing predictions to be plotted')
     subparser_plot.add_argument('--loss_name', type=str, default='train_loss', help='name of training loss')
     subparser_plot.add_argument('--valid_metric_name', type=str, default='valid_metric', help='name of validation metric')

@@ -61,9 +61,9 @@ class MyDataset(Dataset):
             pet60_p = pet60[top:top+self.patch_size, left:left+self.patch_size]
 
             if torch.max(ct_p) > torch.tensor([1e-3]):
-                pet10ct_patch[i,0,:,:] = pet10_p
-                pet10ct_patch[i,1,:,:] = ct_p
-                pet60_patch[i,:,:] = pet60_p
+                pet10ct_patch[i,0,:,:] = pet10_p/torch.max(pet10_p)
+                pet10ct_patch[i,1,:,:] = ct_p/torch.max(ct_p)
+                pet60_patch[i,:,:] = pet60_p/torch.max(pet60_p)
                 i += 1
         return pet10ct_patch, pet60_patch
 

@@ -26,23 +26,23 @@ class Solver(object):
             self.scheduler = args.scheduler
             self.lr = args.lr
             self.gamma = args.gamma
-            self.device_ids = args.device_ids
+            self.device_idx = args.device_idx
             self.decay_iters = args.decay_iters
             self.print_iters = args.print_iters
             self.save_iters = args.save_iters
             self.metric_func = metric_func
             self.model = model
-            self.device = torch.device(set_device(self.device_ids))
+            self.device = torch.device(set_device(self.device_idx))
             self.loss_name = args.loss_name
             self.metric_name = args.metric_name
         elif self.mode == 'test':
             # load teseting parameters
-            self.device_ids = args.device_ids
+            self.device_idx = args.device_idx
             self.metric_func = metric_func
             self.metric_name = args.metric_name
             self.pred_name = args.pred_name
             self.checkpoint = args.checkpoint
-            self.device = torch.device(set_device(self.device_ids))
+            self.device = torch.device(set_device(self.device_idx))
             self.model = model
         else:
             # load plotting parameters
@@ -83,7 +83,7 @@ class Solver(object):
             start_epoch = 0
         
         # multi-gpu training and move model to device
-        if len(self.device_ids)>1:
+        if len(self.device_idx)>1:
             self.model = nn.DataParallel(self.model)
             loss_func = self.model.module.compute_loss()
         else:
@@ -194,7 +194,7 @@ class Solver(object):
             sys.exit(0)
 
         # multi-gpu testing and move model to device
-        if len(self.device_ids)>1:
+        if len(self.device_idx)>1:
             self.model = nn.DataParallel(self.model)
         self.model = self.model.to(self.device)
         
