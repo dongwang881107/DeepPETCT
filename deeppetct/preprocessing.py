@@ -49,20 +49,20 @@ def set_folder(path):
         print('Create path : {}'.format(stat_path))
 
 # set up device
-def set_device(device_ids):
+def set_device(device_idx):
     if not torch.cuda.is_available():
         device = 'cpu'
         print('Using CPU')
     else:
-        device_ids = sorted(device_ids)
-        num_gpus = len(device_ids)
+        device_idx = sorted(device_idx)
+        num_gpus = len(device_idx)
         available_gpus = torch.cuda.device_count()
         if num_gpus == 0:
             device = 'cpu'
             print('Using CPU')
         else: 
-            assert(device_ids[0]>=0)
-            assert(device_ids[-1]<=(available_gpus-1))
+            assert(device_idx[0]>=0)
+            assert(device_idx[-1]<=(available_gpus-1))
             print('Using {} GPU(s)'.format(num_gpus))
             device = 'cuda'
             torch.backends.cudnn.benchmark = True

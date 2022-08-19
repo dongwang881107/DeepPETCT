@@ -3,6 +3,7 @@ import os
 import time
 import numpy as np
 import torch.nn as nn
+from torchsummary import summary
 
 '''
 PRINTING
@@ -28,13 +29,22 @@ def print_args(args):
     if count == 1:
         print('\n')
 
+# print model architecture
+def print_model(model, device_idx):
+    if len(device_idx) > 0:
+        model = model.cuda()
+    print('Generator:')
+    summary(model.generator,(2,144,144))
+    print('Discriminator:')
+    summary(model.discriminator,(1,144,144))
+
 # print statistics
 def print_stat(epoch, total_train_loss, total_valid_loss, total_valid_metric, start_time):
     print('epoch = {:<3} | train loss   | dis = {:<8.2f} | gen = {:<8.2f} | grad = {:<8.2f} | perc = {:<8.2f} | wass = {:<8.2f}'.\
         format(epoch+1, total_train_loss[-1][0], total_train_loss[-1][1], total_train_loss[-1][2], total_train_loss[-1][3], total_train_loss[-1][4]), end="| \n")
     print(' '*12, end="| ")
     print('valid loss   | dis = {:<8.2f} | gen = {:<8.2f} | grad = {:<8.2f} | perc = {:<8.2f} | wass = {:<8.2f}'.\
-        format(epoch+1, total_valid_loss[-1][0], total_valid_loss[-1][1], total_valid_loss[-1][2], total_valid_loss[-1][3], total_valid_loss[-1][4]), end="| \n")
+        format(total_valid_loss[-1][0], total_valid_loss[-1][1], total_valid_loss[-1][2], total_valid_loss[-1][3], total_valid_loss[-1][4]), end="| \n")
     print(' '*12, end="| valid metric | ")
     keys = list(total_valid_metric[0].keys())
     for key in keys:

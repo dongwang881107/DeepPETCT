@@ -97,8 +97,8 @@ class WGANVGG(nn.Module):
         self.perc_metric = nn.MSELoss()
 
     # discriminator loss
-    def discriminator_loss(self, fake, real, d_fake, d_real, lambda2):
-        grad_loss = self.gradient_loss(fake, real)
+    def discriminator_loss(self, fake, real, d_fake, d_real, lambda2, device):
+        grad_loss = self.gradient_loss(fake, real, device)
         dis_loss = -torch.mean(d_real) + torch.mean(d_fake) + lambda2*grad_loss
         return (dis_loss, grad_loss)
 
@@ -118,12 +118,12 @@ class WGANVGG(nn.Module):
         return perc_loss
 
     # gradient loss
-    def gradient_loss(self, fake, real):
-        eta = torch.FloatTensor(real.size(0),1,1,1).uniform_(0,1)
+    def gradient_loss(self, fake, real, device):
+        eta = torch.Tensor(real.size(0),1,1,1).uniform_(0,1).to(device)
         interp = (eta*real+((1-eta)*fake)).requires_grad_(True)
         d_interp = self.discriminator(interp)
         gradients = autograd.grad(outputs=d_interp, inputs=interp,\
-            grad_outputs=torch.ones(d_interp.size()).requires_grad_(False),\
+            grad_outputs=torch.ones(d_interp.size()).requires_grad_(False).to(device),\
             create_graph=True, retain_graph=True)[0]
         grad_loss = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
         return grad_loss

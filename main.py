@@ -1,6 +1,5 @@
 import argparse
 import warnings
-from torchsummary import summary
 
 from deeppetct.postprocessing import *
 from deeppetct.preprocessing import *
@@ -32,10 +31,7 @@ def main(args):
     # determine neural networks
     model = deeparch.wganvgg(args.patch_size)
     if args.mode == 'train':
-        print('Generator')
-        summary(model.generator,(2,144,144))
-        print('Discriminator')
-        summary(model.discriminator,(1,144,144))
+        print_model(model, args.device_idx)
     # determine metric functions
     metric_func = MetricsCompose([ComputeRMSE(), ComputePSNR(), ComputeSSIM()])
     # build solver
@@ -51,7 +47,7 @@ if __name__ == "__main__":
     # training paramters
     subparser_train = subparsers.add_parser('train', help='training mode')
     subparser_train.add_argument('--seed', type=int, default=1000, help='random seed')
-    subparser_train.add_argument('--device_ids', nargs='+', type=int, default=[], help='gpu numbers')
+    subparser_train.add_argument('--device_idx', nargs='+', type=int, default=[], help='gpu numbers')
     subparser_train.add_argument('--save_path', type=str, default='./gan/test', help='saved path of the results')
     subparser_train.add_argument('--num_workers', type=int, default=0, help='number of workers used')
     subparser_train.add_argument('--log_name', type=str, default='log', help='name of the log file')
@@ -74,7 +70,7 @@ if __name__ == "__main__":
     # testing parameters
     subparser_test = subparsers.add_parser('test', help='testing mode')
     subparser_test.add_argument('--save_path', type=str, default='./gan/test', help='saved path of the results')
-    subparser_test.add_argument('--device_ids', nargs='+', type=int, default=[], help='gpu numbers')
+    subparser_test.add_argument('--device_idx', nargs='+', type=int, default=[], help='gpu numbers')
     subparser_test.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/toy')
     subparser_test.add_argument('--num_workers', type=int, default=4, help='number of workers used')
     subparser_test.add_argument('--patch_size', type=int, default=144, help='patch size')

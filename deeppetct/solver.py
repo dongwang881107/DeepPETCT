@@ -28,22 +28,22 @@ class Solver(object):
             self.lr = args.lr
             self.lambda1 = args.lambda1
             self.lambda2 = args.lambda2
-            self.device_ids = args.device_ids
+            self.device_idx = args.device_idx
             self.print_iters = args.print_iters
             self.save_iters = args.save_iters
             self.metric_func = metric_func
             self.model = model
-            self.device = torch.device(set_device(self.device_ids))
+            self.device = torch.device(set_device(self.device_idx))
             self.loss_name = args.loss_name
             self.metric_name = args.metric_name
         elif self.mode == 'test':
             # load teseting parameters
-            self.device_ids = args.device_ids
+            self.device_idx = args.device_idx
             self.metric_func = metric_func
             self.metric_name = args.metric_name
             self.pred_name = args.pred_name
             self.checkpoint = args.checkpoint
-            self.device = torch.device(set_device(self.device_ids))
+            self.device = torch.device(set_device(self.device_idx))
             self.model = model
         else:
             # load plotting parameters
@@ -87,8 +87,8 @@ class Solver(object):
             start_epoch = 0
         
         # multi-gpu training and move model to device
-        if len(self.device_ids)>1:
-            self.model = nn.DataParallel(self.model)
+        if len(self.device_idx)>1:
+            self.model = nn.DataParallel(self.model).module
         self.model = self.model.to(self.device)
 
         # compute total patch number
@@ -127,7 +127,7 @@ class Solver(object):
                     d_fake = self.model.discriminator(fake)
                     d_real = self.model.discriminator(real)
                     # compute loss
-                    dis_loss, grad_loss = self.model.discriminator_loss(fake, real, d_fake, d_real, self.lambda2)
+                    dis_loss, grad_loss = self.model.discriminator_loss(fake, real, d_fake, d_real, self.lambda2, self.device)
                     # backward propagation
                     dis_loss.backward(retain_graph=True)
                     # update weights
@@ -183,7 +183,7 @@ class Solver(object):
                     d_real = self.model.discriminator(real)
                     # compute loss
                     with torch.enable_grad():
-                        dis_loss, grad_loss = self.model.discriminator_loss(fake, real, d_fake, d_real, self.lambda2)
+                        dis_loss, grad_loss = self.model.discriminator_loss(fake, real, d_fake, d_real, self.lambda2, self.device)
                     gen_loss, perc_loss = self.model.generator_loss(fake, real, d_fake, self.lambda1)
                     # compute metric
                     fake = fake/torch.max(fake)
@@ -238,8 +238,8 @@ class Solver(object):
             sys.exit(0)
 
         # multi-gpu testing and move model to device
-        if len(self.device_ids)>1:
-            self.model = nn.DataParallel(self.model)
+        if len(self.device_idx)>1:
+            self.model = nn.DataParallel(self.model).module
         self.model = self.model.to(self.device)
 
         # testing
