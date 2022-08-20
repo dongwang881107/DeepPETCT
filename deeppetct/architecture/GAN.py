@@ -1,32 +1,10 @@
 import torch
-import sys
 import math
 import torch.nn as nn
 
 from torch import autograd
 from torchvision.models import vgg19
-
-# get activation function
-def get_acti(acti):
-    return nn.ModuleDict([
-        ['relu', nn.ReLU()],
-        ['leaky_relu', nn.LeakyReLU(negative_slope=0.01)],
-    ])[acti]
-
-# convolutional block: conv-bn-acti
-def conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti, bn_flag=False):
-    if mode == 'conv':
-        conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding)
-    elif mode == 'trans':
-        conv = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding)
-    else:
-        print('[conv] or [trans]')
-        sys.exit(0)
-    if bn_flag == True:
-        bn = nn.BatchNorm2d(out_channels)
-    acti = get_acti(acti)
-    layers = [conv,bn,acti] if bn_flag == True else [conv,acti]
-    return nn.Sequential(*layers)
+from blocks import *
 
 # generator
 class WGANVGG_generator(nn.Module):
