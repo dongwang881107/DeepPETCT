@@ -88,8 +88,10 @@ class Solver(object):
         
         # multi-gpu training and move model to device
         if len(self.device_idx)>1:
-            self.model = nn.DataParallel(self.model).module
-        self.model = self.model.to(self.device)
+            self.model.generator = nn.DataParallel(self.model.generator)
+            self.model.discriminator = nn.DataPrallel(self.model.discriminator)
+        self.model.generator = self.model.generator.to(self.device)
+        self.model.generdiscriminatorator = self.model.discriminator.to(self.device)
 
         # compute total patch number
         if (self.patch_size!=None) & (self.patch_n!=None):
@@ -117,11 +119,11 @@ class Solver(object):
                 if (self.patch_size!=None) & (self.patch_n!=None):
                     x = x.view(-1, 2, self.patch_size, self.patch_size)
                     real = real.view(-1, 1, self.patch_size, self.patch_size)
-                # train discriminator
+                # * train discriminator
                 self.model.discriminator.train()
+                self.model.discriminator.zero_grad()
+                dis_optim.zero_grad()
                 for _ in range(self.num_iters):
-                    self.model.discriminator.zero_grad()
-                    dis_optim.zero_grad()
                     # forward propagation
                     fake = self.model.generator(x).detach()
                     d_fake = self.model.discriminator(fake)
@@ -135,8 +137,7 @@ class Solver(object):
                 # update statistics
                 dis_train_loss += dis_loss.item()
                 grad_train_loss += grad_loss.item()
-                
-                # train generator
+                # * train generator
                 self.model.generator.train()
                 self.model.generator.zero_grad()
                 gen_optim.zero_grad()
@@ -349,6 +350,8 @@ class Solver(object):
                         ct_3d[i,:,:] = np.load(ct_path[i])
                         pet60_3d[i,:,:] = np.load(pet60_path[i])
                     # plot transverse plane
+                    if len(self.trans_idx) == 0:
+                        self.trans_idx = range(case_len)
                     if len(self.trans_idx) > 0:
                         test_metric_path = os.path.join(self.save_path, 'stat', self.test_metric_name+'.npy')
                         test_metric = np.load(test_metric_path, allow_pickle='TRUE')
