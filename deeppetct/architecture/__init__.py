@@ -1,12 +1,9 @@
 
-__all__ = ["REDCNN", "UNET"]
+__all__ = ["CNN"]
 
-from . import REDCNN
-from . import UNET
+from . import CNN
 
-redcnn_tmi = REDCNN.REDCNN_TMI
-redcnn_bn = REDCNN.REDCNN_BN
-redcnn_sa = REDCNN.REDCNN_SA
-unet_mp = UNET.UNET_MP
-unet_tmi = UNET.UNET_TMI
-unet_mia = UNET.UNET_MIA
+redcnn = CNN.REDCNN
+unet_mp = CNN.UNET_MP
+unet_tmi = CNN.UNET_TMI
+unet_mia = CNN.UNET_MIA

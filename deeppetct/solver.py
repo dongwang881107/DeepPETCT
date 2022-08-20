@@ -301,9 +301,11 @@ class Solver(object):
                         pet10_3d[i,:,:] = np.load(pet10_path[i])
                         ct_3d[i,:,:] = np.load(ct_path[i])
                         pet60_3d[i,:,:] = np.load(pet60_path[i])
-                    # plot transverse plane
-                    if len(self.trans_idx) == 0:
-                        self.trans_idx = range(case_len)
+                    # create fig/case_idx folder if not exist
+                    fig_path = os.path.join(self.save_path, 'fig', all_cases[idx])
+                    if not os.path.exists(fig_path):
+                        os.makedirs(fig_path)
+                    # * plot transverse plane
                     if len(self.trans_idx) > 0:
                         test_metric_path = os.path.join(self.save_path, 'stat', self.test_metric_name+'.npy')
                         test_metric = np.load(test_metric_path, allow_pickle='TRUE')
@@ -334,10 +336,9 @@ class Solver(object):
                                 caption += key+':'+"{:.4f}".format(test_metric[1][i][key])+', '
                             caption = caption[:-2]
                             plt.suptitle(caption, fontsize=10, y=0.15)
-                            fig_name = all_cases[idx]+ '_' + \
-                                    pet10_path[i].split('/')[-1].split('.')[0]
+                            fig_name = os.path.join(all_cases[idx], pet10_path[i].split('/')[-1].split('.')[0])
                             self._plot(fig, fig_name)
-                    # plot sagittal plane
+                    # * plot sagittal plane
                     if len(self.sag_idx) > 0:
                         for i in self.sag_idx:
                             pet10_sag = np.flipud(pet10_3d[:,i,:])
@@ -355,9 +356,9 @@ class Solver(object):
                                 ax.set_title(title[j], fontsize=fs)
                                 ax.axis('off')
                                 fig.colorbar(im, ax=ax, fraction=0.065)
-                            fig_name = all_cases[idx]+ '_' + 'sag' + str(i)
+                            fig_name = os.path.join(all_cases[idx], 'sag'+str(i))
                             self._plot(fig, fig_name)
-                    # plot coronal plane
+                    # * plot coronal plane
                     if len(self.coron_idx) > 0:
                         for i in self.coron_idx:
                             pet10_coron = np.flipud(pet10_3d[:,:,i])
@@ -375,7 +376,7 @@ class Solver(object):
                                 ax.set_title(title[j], fontsize=fs)
                                 ax.axis('off')
                                 fig.colorbar(im, ax=ax, fraction=0.065)
-                            fig_name = all_cases[idx]+ '_' + 'coron' + str(i)
+                            fig_name = os.path.join(all_cases[idx], 'coron'+str(i))
                             self._plot(fig, fig_name)
                 else:
                     print('WRONG CASE NUMBER!')

@@ -29,7 +29,7 @@ def main(args):
                             patch_n=args.patch_n if args.mode=='train' else None, 
                             patch_size=args.patch_size if args.mode=='train' else None)
     # determine neural networks
-    model = deeparch.redcnn_tmi()
+    model = deeparch.redcnn(bn_flag=False, sa_flag=False)
     if args.mode == 'train':
         print_model(model, args.device_idx)
     # determine metric functions
