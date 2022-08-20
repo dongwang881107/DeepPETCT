@@ -3,7 +3,7 @@ import os
 import time
 import numpy as np
 import torch.nn as nn
-from torchsummary import summary
+from torchinfo import summary
 
 '''
 PRINTING
@@ -34,9 +34,9 @@ def print_model(model, device_idx):
     if len(device_idx) > 0:
         model = model.cuda()
     print('Generator:')
-    summary(model.generator,(2,144,144))
+    summary(model.generator, input_size=(1,2,144,144), col_names=["kernel_size", "output_size", "num_params"])
     print('Discriminator:')
-    summary(model.discriminator,(1,144,144))
+    summary(model.discriminator, input_size=(1,1,144,144), col_names=["kernel_size", "output_size", "num_params"])
 
 # print statistics
 def print_stat(epoch, total_train_loss, total_valid_loss, total_valid_metric, start_time):

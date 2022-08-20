@@ -89,9 +89,11 @@ class Solver(object):
         # multi-gpu training and move model to device
         if len(self.device_idx)>1:
             self.model.generator = nn.DataParallel(self.model.generator)
-            self.model.discriminator = nn.DataPrallel(self.model.discriminator)
+            self.model.discriminator = nn.DataParallel(self.model.discriminator)
+            self.model.extractor = nn.DataParallel(self.model.extractor)
         self.model.generator = self.model.generator.to(self.device)
-        self.model.generdiscriminatorator = self.model.discriminator.to(self.device)
+        self.model.discriminator = self.model.discriminator.to(self.device)
+        self.model.extractor = self.model.extractor.to(self.device)
 
         # compute total patch number
         if (self.patch_size!=None) & (self.patch_n!=None):

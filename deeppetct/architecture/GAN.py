@@ -4,7 +4,7 @@ import torch.nn as nn
 
 from torch import autograd
 from torchvision.models import vgg19
-from blocks import *
+from .blocks import *
 
 # generator
 class WGANVGG_generator(nn.Module):
@@ -15,16 +15,26 @@ class WGANVGG_generator(nn.Module):
         self.padding = 1
         self.acti = 'relu'
         self.num_channels = 32
+        
         # convolutional layers
-        self.layer_in = conv_block('conv',2,self.num_channels,self.kernel_size,self.stride,self.padding,self.acti)
-        self.layer_hidden = conv_block('conv',self.num_channels,self.num_channels,self.kernel_size,self.stride,self.padding,self.acti)
-        self.layer_out = conv_block('conv',self.num_channels,1,self.kernel_size,self.stride,self.padding,self.acti)
-
+        self.layer1 = conv_block('conv',2,self.num_channels,self.kernel_size,self.stride,self.padding,self.acti)
+        self.layer2 = conv_block('conv',self.num_channels,self.num_channels,self.kernel_size,self.stride,self.padding,self.acti)
+        self.layer3 = conv_block('conv',self.num_channels,self.num_channels,self.kernel_size,self.stride,self.padding,self.acti)
+        self.layer4 = conv_block('conv',self.num_channels,self.num_channels,self.kernel_size,self.stride,self.padding,self.acti)
+        self.layer5 = conv_block('conv',self.num_channels,self.num_channels,self.kernel_size,self.stride,self.padding,self.acti)
+        self.layer6 = conv_block('conv',self.num_channels,self.num_channels,self.kernel_size,self.stride,self.padding,self.acti)
+        self.layer7 = conv_block('conv',self.num_channels,self.num_channels,self.kernel_size,self.stride,self.padding,self.acti)
+        self.layer8 = conv_block('conv',self.num_channels,1,self.kernel_size,self.stride,self.padding,self.acti)
+    
     def forward(self, x):
-        out = self.layer_in(x)
-        for _ in range(2,8):
-            out = self.layer_hidden(out)
-        out = self.layer_out(out)
+        out = self.layer1(x)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
+        out = self.layer5(out)
+        out = self.layer6(out)
+        out = self.layer7(out)
+        out = self.layer8(out)
         return out
 
 # discriminator
