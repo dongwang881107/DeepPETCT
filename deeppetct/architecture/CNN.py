@@ -21,26 +21,32 @@ class REDCNN(nn.Module):
         if self.sa_flag == True:
             self.sa = SelfAttenBlock(self.out_channel)
 
-        self.layer_in = conv_block('conv', 2, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.layer_conv = conv_block('conv', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.layer_trans = conv_block('trans', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.layer_out = conv_block('trans', self.out_channel, 1, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer1 = conv_block('conv', 2, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer2 = conv_block('conv', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer3 = conv_block('conv', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer4 = conv_block('conv', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer5 = conv_block('conv', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer6 = conv_block('trans', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer7 = conv_block('trans', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer8 = conv_block('trans', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer9 = conv_block('trans', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer10 = conv_block('trans', self.out_channel, 1, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
 
     def forward(self, x):
         # encoder
-        out = self.layer_conv(self.layer_in(x))
+        out = self.layer2(self.layer1(x))
         res1 = out
-        out = self.layer_conv(self.layer_conv(out))
+        out = self.layer4(self.layer3(out))
         res2 = out
         # decoder
         if self.sa_flag == True:
-            out = self.layer_trans(self.sa(self.layer_conv(out)))
+            out = self.layer6(self.sa(self.layer5(out)))
         else:
-            out = self.layer_trans(self.layer_conv(out))
+            out = self.layer6(self.layer5(out))
         out = out + res2
-        out = self.layer_trans(self.layer_trans(out))
+        out = self.layer8(self.layer7(out))
         out = out + res1
-        out = self.layer_out(self.layer_trans(out))
+        out = self.layer10(self.layer9(out))
         return out
 
     @ classmethod
