@@ -31,7 +31,7 @@ def main(args):
     # determine neural networks
     model = deeparch.wganvgg(args.patch_size)
     if args.mode == 'train':
-        print_model(model, args.device_idx)
+        print_model(model)
     # determine metric functions
     metric_func = MetricsCompose([ComputeRMSE(), ComputePSNR(), ComputeSSIM()])
     # build solver

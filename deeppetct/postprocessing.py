@@ -29,10 +29,8 @@ def print_args(args):
     if count == 1:
         print('\n')
 
-# print model architecture
-def print_model(model, device_idx):
-    if len(device_idx) > 0:
-        model = model.cuda()
+# print model
+def print_model(model):
     print('Generator:')
     summary(model.generator, input_size=(1,2,144,144), col_names=["kernel_size", "output_size", "num_params"])
     print('Discriminator:')
@@ -90,8 +88,8 @@ SAVING
 # save checkpoints
 def save_checkpoint(model, dis_optim, gen_optim, dis_sched, gen_sched, save_path, num_epochs, epoch=None):
     checkpoint_path = os.path.join(save_path, 'checkpoint')
-    state_dict = {'generator':model.generator.module.state_dict() if isinstance(model, nn.DataParallel) else model.generator.state_dict(),\
-        'discriminator':model.discriminator.module.state_dict() if isinstance(model, nn.DataParallel) else model.discriminator.state_dict(),\
+    state_dict = {'generator':model.generator.module.state_dict() if isinstance(model.generator, nn.DataParallel) else model.generator.state_dict(),\
+        'discriminator':model.discriminator.module.state_dict() if isinstance(model.discriminator, nn.DataParallel) else model.discriminator.state_dict(),\
         'gen_optim':gen_optim.state_dict(), 'dis_optim':dis_optim.state_dict(), \
         'gen_sched':gen_sched.state_dict(), 'dis_sched':dis_sched.state_dict(), 'epoch':epoch}
     if epoch is not None:

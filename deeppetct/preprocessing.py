@@ -86,8 +86,8 @@ def optim_to(optim, device):
 def set_optim(model, lr, scheduler):
     gamma = 0.8
     decay_iters = 10
-    b1 = 0.5
-    b2 = 0.99
+    b1 = 0.9
+    b2 = 0.999
     gen_optimizer = optim.Adam(model.generator.parameters(), lr=lr, betas=(b1,b2))
     dis_optimizer = optim.Adam(model.discriminator.parameters(), lr=lr, betas=(b1,b2))
     if scheduler == 'none':

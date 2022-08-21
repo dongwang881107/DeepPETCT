@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 from deeppetct.preprocessing import *
 from deeppetct.postprocessing import *
+from deeppetct.architecture.blocks import *
 
 class Solver(object):
     def __init__(self, dataloader, model, metric_func, args):
@@ -84,6 +85,8 @@ class Solver(object):
             print('{: ^118s}'.format('Successfully load checkpoint! Training from epoch {}'.format(start_epoch)))
         else:
             print('{: ^118s}'.format('No checkpoint found! Training from epoch 0!'))
+            self.model.generator.apply(weights_init)
+            self.model.discriminator.apply(weights_init)
             start_epoch = 0
         
         # multi-gpu training and move model to device
@@ -136,6 +139,8 @@ class Solver(object):
                     dis_loss.backward(retain_graph=True)
                     # update weights
                     dis_optim.step()
+                    for p in self.model.discriminator.parameters():
+                        p.data.clamp_(-0.01,0.01)
                 # update statistics
                 dis_train_loss += dis_loss.item()
                 grad_train_loss += grad_loss.item()
@@ -189,7 +194,7 @@ class Solver(object):
                         dis_loss, grad_loss = self.model.discriminator_loss(fake, real, d_fake, d_real, self.lambda2, self.device)
                     gen_loss, perc_loss = self.model.generator_loss(fake, real, d_fake, self.lambda1)
                     # compute metric
-                    fake = fake/torch.max(fake)
+                    # fake = fake/torch.max(fake)
                     metric = self.metric_func(fake, real)
                     dis_valid_loss += dis_loss.item()
                     gen_valid_loss += gen_loss.item()
@@ -242,8 +247,8 @@ class Solver(object):
 
         # multi-gpu testing and move model to device
         if len(self.device_idx)>1:
-            self.model = nn.DataParallel(self.model).module
-        self.model = self.model.to(self.device)
+            self.model.generator = nn.DataParallel(self.model.generator)
+        self.model.generator = self.model.generator.to(self.device)
 
         # testing
         total_metric_fake = []

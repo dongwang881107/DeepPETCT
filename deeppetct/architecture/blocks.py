@@ -9,6 +9,17 @@ def get_acti(acti):
         ['leaky_relu', nn.LeakyReLU(negative_slope=0.01)],
     ])[acti]
 
+# initialize model
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find('Conv') != -1:
+        nn.init.kaiming_normal_(m.weight, mode='fan_in')
+    elif classname.find('BatchNorm2d') != -1:
+        nn.init.constant_(m.weight, 1)
+        nn.init.constant_(m.bias, 0)
+    elif classname.find('Linear') != -1:
+        nn.init.kaiming_normal_(m.weight, mode='fan_in')
+
 # convolution block: conv-[bn]-acti
 def conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti, bn_flag=False):
     if mode == 'conv':
