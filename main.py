@@ -31,7 +31,7 @@ def main(args):
     # determine neural networks
     model = deeparch.redcnn(bn_flag=False, sa_flag=False)
     if args.mode == 'train':
-        print_model(model, args.device_idx)
+        print_model(model)
     # determine metric functions
     metric_func = MetricsCompose([ComputeRMSE(), ComputePSNR(), ComputeSSIM()])
     # build solver

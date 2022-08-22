@@ -5,11 +5,12 @@ from .blocks import *
 
 class REDCNN(nn.Module):
     # Low-Dose CT With a Residual Encoder-Decoder Convolutional Neural Network
+    # Multi-Branch Input (CT+PET)
     # Page 2526, Figure 1
     # Conv2d (s=1) + ConvTranspose2d (s=1)
     def __init__(self, bn_flag, sa_flag):
         super(REDCNN, self).__init__()
-        print('RENCNN: Residual Encoder-Decoder Convolutional Neural Network in TMI paper')
+        print('Multi-Branch Residual Encoder Decoder CNN')
 
         self.kernel_size = 5
         self.padding = 0
@@ -21,27 +22,49 @@ class REDCNN(nn.Module):
         if self.sa_flag == True:
             self.sa = SelfAttenBlock(self.out_channel)
 
-        self.layer_in = conv_block('conv', 2, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.layer_conv = conv_block('conv', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.layer_trans = conv_block('trans', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.layer_out = conv_block('trans', self.out_channel, 1, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        # ct branch
+        self.layer_ct1 = conv_block('conv', 1, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer_ct2 = conv_block('conv', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer_ct3 = conv_block('conv', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer_ct4 = conv_block('conv', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer_ct5 = conv_block('conv', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
 
-    def forward(self, x):
-        # encoder
-        out = self.layer_conv(self.layer_in(x))
-        res1 = out
-        out = self.layer_conv(self.layer_conv(out))
-        res2 = out
-        # decoder
-        if self.sa_flag == True:
-            out = self.layer_trans(self.sa(self.layer_conv(out)))
-        else:
-            out = self.layer_trans(self.layer_conv(out))
-        out = out + res2
-        out = self.layer_trans(self.layer_trans(out))
-        out = out + res1
-        out = self.layer_out(self.layer_trans(out))
-        return out
+        # pet branch
+        self.layer_pet1 = conv_block('conv', 1, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer_pet2 = conv_block('conv', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer_pet3 = conv_block('conv', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer_pet4 = conv_block('conv', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer_pet5 = conv_block('conv', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+
+        # combine together
+        self.layer_com1 = conv_block('trans', 2*self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer_com2 = conv_block('trans', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer_com3 = conv_block('trans', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer_com4 = conv_block('trans', self.out_channel, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+        self.layer_com5 = conv_block('trans', self.out_channel, 1, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+
+    def forward(self, pet10, ct):
+        out_ct = self.layer_ct5(self.layer_ct4(self.layer_ct3(self.layer_ct2(self.layer_ct1(ct)))))
+        out_pet = self.layer_pet1(pet10)
+        # res1 = out_pet
+        out_pet = self.layer_pet2(out_pet)
+        res2 = out_pet
+        out_pet = self.layer_pet3(out_pet)
+        # res3 = out_pet
+        out_pet = self.layer_pet4(out_pet)
+        res4 = out_pet
+        out_pet = self.layer_pet5(out_pet)
+        out_com = torch.cat((out_pet,out_ct), dim=1)
+        out_com = self.layer_com1(out_com)
+        out_com = out_com + res4
+        out_com = self.layer_com2(out_com)
+        # out_com = out_com + res3
+        out_com = self.layer_com3(out_com)
+        out_com = out_com + res2
+        out_com = self.layer_com4(out_com)
+        # out_com = out_com + res1
+        out_com = self.layer_com5(out_com)
+        return out_com
 
     @ classmethod
     def compute_loss(cls):

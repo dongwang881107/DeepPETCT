@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import glob
 import matplotlib.pyplot as plt
+from deeppetct.architecture.blocks import weights_init
 
 from deeppetct.preprocessing import *
 from deeppetct.postprocessing import *
@@ -80,6 +81,7 @@ class Solver(object):
             print('{: ^118s}'.format('Successfully load checkpoint! Training from epoch {}'.format(start_epoch)))
         else:
             print('{: ^118s}'.format('No checkpoint found! Training from epoch 0!'))
+            # self.model.apply(weights_init)
             start_epoch = 0
         
         # multi-gpu training and move model to device
@@ -104,28 +106,30 @@ class Solver(object):
         for epoch in range(start_epoch, self.num_epochs):
             # training
             train_loss = 0.0
-            for (x,y) in self.dataloader[0]:
+            for (pet10,ct,pet60) in self.dataloader[0]:
                 # move data to device
-                x = x.float().to(self.device)
-                y = y.float().to(self.device)
+                pet10 = pet10.float().to(self.device)
+                ct = ct.float().to(self.device)
+                pet60 = pet60.float().to(self.device)
                 # patch training/resize to (batch,feature,weight,height)
                 if (self.patch_size!=None) & (self.patch_n!=None):
-                    x = x.view(-1, 2, self.patch_size, self.patch_size)
-                    y = y.view(-1, 1, self.patch_size, self.patch_size)
+                    pet10 = pet10.view(-1, 1, self.patch_size, self.patch_size)
+                    ct = ct.view(-1, 1, self.patch_size, self.patch_size)
+                    pet60 = pet60.view(-1, 1, self.patch_size, self.patch_size)
                 # zero the gradients
                 self.model.train()
                 self.model.zero_grad()
                 optim.zero_grad()
                 # forward propagation
-                pred = self.model(x)
+                pred = self.model(pet10, ct)
                 # compute loss
-                loss = loss_func(pred, y)/x.size()[0]
+                loss = loss_func(pred, pet60)/pet10.size()[0]
                 # backward propagation
                 loss.backward()
                 # update weights
                 optim.step()
                 # update statistics
-                train_loss += loss.item()*x.size()[0]
+                train_loss += loss.item()*pet10.size()[0]
             # update statistics (average over batch)
             total_train_loss.append(train_loss/total_train_data)
             # update scheduler    
@@ -136,20 +140,22 @@ class Solver(object):
             valid_metric = {}
             self.model.eval()
             with torch.no_grad():
-                for i, (x,y) in enumerate(self.dataloader[1]):
+                for i, (pet10,ct,pet60) in enumerate(self.dataloader[1]):
                     # move data to device
-                    x = x.float().to(self.device)
-                    y = y.float().to(self.device)
+                    pet10 = pet10.float().to(self.device)
+                    ct = ct.float().to(self.device)
+                    pet60 = pet60.float().to(self.device)
                     # patch training/resize to (batch,feature,weight,height)
                     if (self.patch_size!=None) & (self.patch_n!=None):
-                        x = x.view(-1, 2, self.patch_size, self.patch_size)
-                        y = y.view(-1, 1, self.patch_size, self.patch_size) 
+                        pet10 = pet10.view(-1, 1, self.patch_size, self.patch_size)
+                        ct = ct.view(-1, 1, self.patch_size, self.patch_size)
+                        pet60 = pet60.view(-1, 1, self.patch_size, self.patch_size) 
                     # forward propagation
-                    pred = self.model(x)
+                    pred = self.model(pet10, ct)
                     # compute loss
-                    loss = loss_func(pred, y)
+                    loss = loss_func(pred, pet60)
                     # compute metric
-                    metric = self.metric_func(pred, y)
+                    metric = self.metric_func(pred, pet60)
                     valid_loss += loss.item()
                     valid_metric = metric if i == 0 else {key:valid_metric[key]+metric[key] for key in metric.keys()}
             # update statistics (average over batch)
@@ -203,18 +209,20 @@ class Solver(object):
         total_metric_x = []
         self.model.eval()
         with torch.no_grad():
-            for i, (x,y) in enumerate(self.dataloader):
+            for i, (pet10,ct,pet60) in enumerate(self.dataloader):
                 # resize to (batch,feature,weight,height)
-                x = x.view(-1, 2, 144, 144)
-                y = y.view(-1, 1, 144, 144)
+                pet10 = pet10.view(-1, 1, 144, 144)
+                ct = ct.view(-1, 1, 144, 144)
+                pet60 = pet60.view(-1, 1, 144, 144)
                 # move data to device
-                x = x.float().to(self.device)
-                y = y.float().to(self.device)
+                pet10 = pet10.float().to(self.device)
+                ct = ct.float().to(self.device)
+                pet60 = pet60.float().to(self.device)
                 # predict
-                pred = self.model(x)
+                pred = self.model(pet10, ct)
                 pred = pred/torch.max(pred)
-                metric_x = self.metric_func(x, y)
-                metric_pred = self.metric_func(pred, y)
+                metric_x = self.metric_func(pet10, pet60)
+                metric_pred = self.metric_func(pred, pet60)
                 total_metric_x.append(metric_x)
                 total_metric_pred.append(metric_pred)
                 # save predictions
