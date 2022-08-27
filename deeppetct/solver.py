@@ -3,13 +3,13 @@ import numpy as np
 import torch
 import glob
 import matplotlib.pyplot as plt
-from deeppetct.architecture.blocks import weights_init
 
+from deeppetct.architecture.blocks import *
 from deeppetct.preprocessing import *
 from deeppetct.postprocessing import *
 
 class Solver(object):
-    def __init__(self, dataloader, model, metric_func, args):
+    def __init__(self, dataloader, model, loss_func, metric_func, args):
         super().__init__()
 
         # load shared parameters
@@ -31,6 +31,7 @@ class Solver(object):
             self.decay_iters = args.decay_iters
             self.print_iters = args.print_iters
             self.save_iters = args.save_iters
+            self.loss_func = loss_func
             self.metric_func = metric_func
             self.model = model
             self.device = torch.device(set_device(self.device_idx))
@@ -87,9 +88,6 @@ class Solver(object):
         # multi-gpu training and move model to device
         if len(self.device_idx)>1:
             self.model = nn.DataParallel(self.model)
-            loss_func = self.model.module.compute_loss()
-        else:
-            loss_func = self.model.compute_loss()
         self.model = self.model.to(self.device)
 
         # compute total patch number
@@ -123,18 +121,18 @@ class Solver(object):
                 # forward propagation
                 pred = self.model(pet10, ct)
                 # compute loss
-                loss = loss_func(pred, pet60)/pet10.size()[0]
+                loss = self.loss_func(pred, pet60)
                 # backward propagation
                 loss.backward()
                 # update weights
                 optim.step()
                 # update statistics
-                train_loss += loss.item()*pet10.size()[0]
+                train_loss += loss.item()
             # update statistics (average over batch)
-            total_train_loss.append(train_loss/total_train_data)
+            total_train_loss.append(train_loss)
             # update scheduler    
             scheduler.step()
-            
+
             # validation
             valid_loss = 0.0
             valid_metric = {}
@@ -152,14 +150,15 @@ class Solver(object):
                         pet60 = pet60.view(-1, 1, self.patch_size, self.patch_size) 
                     # forward propagation
                     pred = self.model(pet10, ct)
+                    print(torch.max(pred))
                     # compute loss
-                    loss = loss_func(pred, pet60)
+                    loss = self.loss_func(pred, pet60)
                     # compute metric
                     metric = self.metric_func(pred, pet60)
                     valid_loss += loss.item()
                     valid_metric = metric if i == 0 else {key:valid_metric[key]+metric[key] for key in metric.keys()}
             # update statistics (average over batch)
-            total_valid_loss.append(valid_loss/total_valid_data)
+            total_valid_loss.append(valid_loss)
             total_valid_metric.append({key:valid_metric[key]/total_valid_data for key in valid_metric.keys()})
             # save best checkpoint
             if min_valid_loss > valid_loss:
@@ -253,15 +252,21 @@ class Solver(object):
 
         # plot training loss
         if self.not_plot_loss:
+            # * plot training loss
             loss_path = os.path.join(self.save_path, 'stat', self.loss_name+'.npy')
             total_loss = np.load(loss_path)
             fig = plt.figure()
             plt.xlabel('Epoch', fontsize=fs)
             plt.ylabel('Training Loss', fontsize=fs)
-            for j in range(total_loss.shape[-1]):
-                plt.plot(total_loss[:,j], linewidth=lw)
-            plt.legend(['training','validation'])
-            self._plot(fig, self.loss_name)
+            plt.plot(total_loss[:,0], linewidth=lw)
+            self._plot(fig, 'train_loss')
+            # * plot validation loss
+            fig = plt.figure()
+            plt.xlabel('Epoch', fontsize=fs)
+            plt.ylabel('Validation Loss', fontsize=fs)
+            plt.plot(total_loss[:,1], linewidth=lw)
+            # plt.legend(['training','validation'])
+            self._plot(fig, 'valid_loss')
 
         # plot validation metric
         if self.not_plot_metric:

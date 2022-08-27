@@ -6,6 +6,7 @@ from deeppetct.preprocessing import *
 from deeppetct.data import *
 from deeppetct.solver import *
 from deeppetct.metric import *
+from deeppetct.loss import *
 from deeppetct.transform import *
 
 import deeppetct.architecture as deeparch
@@ -29,13 +30,16 @@ def main(args):
                             patch_n=args.patch_n if args.mode=='train' else None, 
                             patch_size=args.patch_size if args.mode=='train' else None)
     # determine neural networks
-    model = deeparch.redcnn(bn_flag=False, sa_flag=False)
+    model = deeparch.redcnn(bn_flag=True, sa_flag=False)
     if args.mode == 'train':
         print_model(model)
+    # determine loss functions
+    loss_weights = [1,1]
+    loss_func = LossCompose([nn.MSELoss(), SSIMLoss()], loss_weights)
     # determine metric functions
-    metric_func = MetricsCompose([ComputeRMSE(), ComputePSNR(), ComputeSSIM()])
+    metric_func = MetricsCompose([CompareRMSE(), ComparePSNR(), CompareSSIM()])
     # build solver
-    solver = Solver(dataloader, model, metric_func, args)    
+    solver = Solver(dataloader, model, loss_func, metric_func, args)    
 
     # training/testing/plotting
     eval('solver.{}()'.format(args.mode))
@@ -57,7 +61,7 @@ if __name__ == "__main__":
     subparser_train.add_argument('--patch_size', type=int, default=32, help='patch size')
     subparser_train.add_argument('--lr', type=float, default=1e-4, help='learning rate of model')
     subparser_train.add_argument('--scheduler', type=str, default='step', help='type of the scheduler')
-    subparser_train.add_argument('--gamma', type=float, default=0.8, help='decay value of the learning rate')
+    subparser_train.add_argument('--gamma', type=float, default=0.5, help='decay value of the learning rate')
     subparser_train.add_argument('--num_epochs', type=int, default=100, help='number of epochs')
     subparser_train.add_argument('--decay_iters', type=int, default=10, help='number of iterations to decay learning rate')
     subparser_train.add_argument('--save_iters', type=int, default=10, help='number of iterations to save models')
