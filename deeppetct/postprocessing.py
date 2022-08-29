@@ -3,7 +3,7 @@ import os
 import time
 import numpy as np
 import torch.nn as nn
-from torchsummary import summary
+from torchinfo import summary
 
 
 '''
@@ -16,10 +16,8 @@ def print_usage():
     '''
 
 # print model
-def print_model(model, device_idx):
-    if len(device_idx) > 0:
-        model = model.cuda()
-    summary(model, (2,144,144))
+def print_model(model):
+    summary(model, input_size=(1,2,144,144), dtypes=[torch.float, torch.float], col_names=["kernel_size", "output_size", "num_params"])
 
 # print arguments
 def print_args(args):

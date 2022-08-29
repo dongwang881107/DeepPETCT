@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch
-from .blocks import *
+from deeppetct.architecture.blocks import *
 
 
 class REDCNN(nn.Module):
@@ -69,19 +69,19 @@ class UNET_MP(nn.Module):
 
         # encoder
         self.layer1 = conv_block('conv', 2, 16, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
-        self.layer2 = down_sampling('conv', 16, 16, self.kernel_size, 2, self.padding, self.acti)
+        self.layer2 = down_sampling('conv', self.kernel_size, 2, self.padding, in_channels=16, out_channels=16, acti=self.acti)
         self.layer3 = conv_block('conv', 16, 32, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
-        self.layer4 = down_sampling('conv', 32, 32, self.kernel_size, 2, self.padding, self.acti)
+        self.layer4 = down_sampling('conv', self.kernel_size, 2, self.padding, in_channels=32, out_channels=32, acti=self.acti)
         self.layer5 = conv_block('conv', 32, 64, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
-        self.layer6 = down_sampling('conv', 64, 128, self.kernel_size, 2, self.padding, self.acti)
+        self.layer6 = down_sampling('conv', self.kernel_size, 2, self.padding, in_channels=64, out_channels=128, acti=self.acti)
         # decoder
-        self.layer7 = up_sampling('trans', 128, 64, self.kernel_size, 2, self.padding, self.acti)
+        self.layer7 = up_sampling('trans', self.kernel_size, 2, self.padding, in_channels=128, out_channels=64, acti=self.acti)
         self.layer8 = conv_block('conv', 64, 64, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
         self.layer9 = conv_block('conv', 64, 64, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
-        self.layer10 = up_sampling('trans', 64, 32, self.kernel_size, 2, self.padding, self.acti)
+        self.layer10 = up_sampling('trans', self.kernel_size, 2, self.padding, in_channels=64, out_channels=32, acti=self.acti)
         self.layer11 = conv_block('conv', 32, 32, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
         self.layer12 = conv_block('conv', 32, 32, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
-        self.layer13 = up_sampling('trans', 32, 16, self.kernel_size, 2, self.padding, self.acti)    
+        self.layer13 = up_sampling('trans', self.kernel_size, 2, self.padding, in_channels=32, out_channels=16, acti=self.acti)    
         self.layer14 = conv_block('conv', 16, 16, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
         self.layer15 = conv_block('conv', 16, 16, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
         self.layer16 = conv_block('conv', 16, 1, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
@@ -113,7 +113,7 @@ class UNET_MP(nn.Module):
 
     @ classmethod
     def compute_loss(cls):
-        return nn.MSELoss(reduction='sum')
+        return nn.MSELoss()
 
 class UNET_MIA(nn.Module):
     # Ref: Towards lower-dose PET using physics-based uncertainty-aware 
@@ -147,16 +147,16 @@ class UNET_MIA(nn.Module):
         self.layer14 = conv_block('conv', 512, 1024, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
         # decoder
         self.layer15 = conv_block('conv', 1024, 512, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
-        self.layer16 = up_sampling(mode='bilinear')
+        self.layer16 = up_sampling(mode='interp_bilinear')
         self.layer17 = conv_block('conv', 1024, 512, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
         self.layer18 = conv_block('conv', 512, 256, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
-        self.layer19 = up_sampling(mode='bilinear')
+        self.layer19 = up_sampling(mode='interp_bilinear')
         self.layer20 = conv_block('conv', 512, 256, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
         self.layer21 = conv_block('conv', 256, 128, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
-        self.layer22 = up_sampling(mode='bilinear')
+        self.layer22 = up_sampling(mode='interp_bilinear')
         self.layer23 = conv_block('conv', 256, 128, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
         self.layer24 = conv_block('conv', 128, 64, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
-        self.layer25 = up_sampling(mode='bilinear')
+        self.layer25 = up_sampling(mode='interp_bilinear')
         self.layer26 = conv_block('conv', 128, 64, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
         self.layer27 = conv_block('conv', 64, 64, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
         self.layer28 = conv_block('conv', 64, 1, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
@@ -183,7 +183,7 @@ class UNET_MIA(nn.Module):
 
     @ classmethod
     def compute_loss(cls):
-        return nn.MSELoss(reduction='sum')
+        return nn.MSELoss()
 
 class UNET_TMI(nn.Module):
     # 3D Auto-Context-Based Locality Adaptive Multi-Modality GANs for PET Synthesis
@@ -240,36 +240,6 @@ class UNET_TMI(nn.Module):
 
     @ classmethod
     def compute_loss(cls):
-        return nn.MSELoss(reduction='sum')
+        return nn.MSELoss()
 
-class SelfAttenBlock(nn.Module):
-    # Self attention layer
-    def __init__(self,in_dim):
-        super(SelfAttenBlock, self).__init__()
-        
-        self.query_conv = nn.Conv2d(in_channels = in_dim , out_channels = in_dim//8 , kernel_size= 1)
-        self.key_conv = nn.Conv2d(in_channels = in_dim , out_channels = in_dim//8 , kernel_size= 1)
-        self.value_conv = nn.Conv2d(in_channels = in_dim , out_channels = in_dim , kernel_size= 1)
-        self.gamma = nn.Parameter(torch.zeros(1))
-        self.softmax  = nn.Softmax(dim=-1)
     
-    def forward(self, x):
-        """
-            inputs :
-                x : input feature maps(B X C X W X H)
-            returns :
-                out : self attention value + input feature 
-                attention: B X N X N (N is Width*Height)
-        """
-        batch_size, C, width, height = x.size()
-        proj_query  = self.query_conv(x).view(batch_size,-1,width*height).permute(0,2,1) # B X CX(N)
-        proj_key =  self.key_conv(x).view(batch_size,-1,width*height) # B X C x (*W*H)
-        energy =  torch.bmm(proj_query,proj_key) # transpose check
-        attention = self.softmax(energy) # BX (N) X (N) 
-        proj_value = self.value_conv(x).view(batch_size,-1,width*height) # B X C X N
-
-        out = torch.bmm(proj_value,attention.permute(0,2,1) )
-        out = out.view(batch_size,C,width,height)
-        
-        out = self.gamma*out + x
-        return out

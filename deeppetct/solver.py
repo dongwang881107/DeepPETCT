@@ -4,11 +4,12 @@ import torch
 import glob
 import matplotlib.pyplot as plt
 
+from deeppetct.architecture.blocks import *
 from deeppetct.preprocessing import *
 from deeppetct.postprocessing import *
 
 class Solver(object):
-    def __init__(self, dataloader, model, metric_func, args):
+    def __init__(self, dataloader, model, loss_func, metric_func, args):
         super().__init__()
 
         # load shared parameters
@@ -30,6 +31,7 @@ class Solver(object):
             self.decay_iters = args.decay_iters
             self.print_iters = args.print_iters
             self.save_iters = args.save_iters
+            self.loss_func = loss_func
             self.metric_func = metric_func
             self.model = model
             self.device = torch.device(set_device(self.device_idx))
@@ -80,14 +82,12 @@ class Solver(object):
             print('{: ^118s}'.format('Successfully load checkpoint! Training from epoch {}'.format(start_epoch)))
         else:
             print('{: ^118s}'.format('No checkpoint found! Training from epoch 0!'))
+            # self.model.apply(weights_init)
             start_epoch = 0
         
         # multi-gpu training and move model to device
         if len(self.device_idx)>1:
             self.model = nn.DataParallel(self.model)
-            loss_func = self.model.module.compute_loss()
-        else:
-            loss_func = self.model.compute_loss()
         self.model = self.model.to(self.device)
 
         # compute total patch number
@@ -119,15 +119,15 @@ class Solver(object):
                 # forward propagation
                 pred = self.model(x)
                 # compute loss
-                loss = loss_func(pred, y)/x.size()[0]
+                loss = self.loss_func(pred, y)
                 # backward propagation
                 loss.backward()
                 # update weights
                 optim.step()
                 # update statistics
-                train_loss += loss.item()*x.size()[0]
+                train_loss += loss.item()
             # update statistics (average over batch)
-            total_train_loss.append(train_loss/total_train_data)
+            total_train_loss.append(train_loss)
             # update scheduler    
             scheduler.step()
             
@@ -147,13 +147,13 @@ class Solver(object):
                     # forward propagation
                     pred = self.model(x)
                     # compute loss
-                    loss = loss_func(pred, y)
+                    loss = self.loss_func(pred, y)
                     # compute metric
                     metric = self.metric_func(pred, y)
                     valid_loss += loss.item()
                     valid_metric = metric if i == 0 else {key:valid_metric[key]+metric[key] for key in metric.keys()}
             # update statistics (average over batch)
-            total_valid_loss.append(valid_loss/total_valid_data)
+            total_valid_loss.append(valid_loss)
             total_valid_metric.append({key:valid_metric[key]/total_valid_data for key in valid_metric.keys()})
             # save best checkpoint
             if min_valid_loss > valid_loss:

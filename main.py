@@ -6,6 +6,7 @@ from deeppetct.preprocessing import *
 from deeppetct.data import *
 from deeppetct.solver import *
 from deeppetct.metric import *
+from deeppetct.loss import *
 from deeppetct.transform import *
 
 import deeppetct.architecture as deeparch
@@ -29,13 +30,16 @@ def main(args):
                             patch_n=args.patch_n if args.mode=='train' else None, 
                             patch_size=args.patch_size if args.mode=='train' else None)
     # determine neural networks
-    model = deeparch.redcnn(bn_flag=False, sa_flag=False)
+    model = deeparch.unet_mia()
     if args.mode == 'train':
-        print_model(model, args.device_idx)
+        print_model(model)
+    # determine loss functions
+    loss_weights = [1]
+    loss_func = LossCompose([nn.MSELoss()], loss_weights)
     # determine metric functions
-    metric_func = MetricsCompose([ComputeRMSE(), ComputePSNR(), ComputeSSIM()])
+    metric_func = MetricsCompose([CompareRMSE(), ComparePSNR(), CompareSSIM()])
     # build solver
-    solver = Solver(dataloader, model, metric_func, args)    
+    solver = Solver(dataloader, model, loss_func, metric_func, args)    
 
     # training/testing/plotting
     eval('solver.{}()'.format(args.mode))
