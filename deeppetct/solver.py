@@ -306,6 +306,8 @@ class Solver(object):
                     if not os.path.exists(fig_path):
                         os.makedirs(fig_path)
                     # * plot transverse plane
+                    if len(self.trans_idx) == 0:
+                        self.trans_idx = range(case_len)
                     if len(self.trans_idx) > 0:
                         test_metric_path = os.path.join(self.save_path, 'stat', self.test_metric_name+'.npy')
                         test_metric = np.load(test_metric_path, allow_pickle='TRUE')

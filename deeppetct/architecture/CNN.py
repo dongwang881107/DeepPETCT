@@ -198,23 +198,23 @@ class UNET_TMI(nn.Module):
         self.padding = 1
         self.acti = 'relu'
         self.bn_flag = True
-
+# self.layer6 = down_sampling('conv', self.kernel_size, 2, self.padding, in_channels=64, out_channels=128, acti=self.acti)
         # fuse PET and CT with 1x1 kernel
         self.layer1 = conv_block('conv', 2, 1, 1, 1, 0, self.acti, self.bn_flag)
         # encoder
         self.layer2 = conv_block('conv', 1, 64, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
-        self.layer3 = down_sampling('conv', 64, 128, self.kernel_size, 2, self.padding, self.acti, self.bn_flag)
-        self.layer4 = down_sampling('conv', 128, 256, self.kernel_size, 2, self.padding, self.acti, self.bn_flag)
-        self.layer5 = down_sampling('conv', 256, 512, self.kernel_size, 2, self.padding, self.acti, self.bn_flag)
-        self.layer6 = down_sampling('conv', 512, 512, self.kernel_size, 2, self.padding, self.acti, self.bn_flag)
+        self.layer3 = down_sampling('conv', self.kernel_size, 2, self.padding, 64, 128, self.acti)
+        self.layer4 = down_sampling('conv', self.kernel_size, 2, self.padding, 128, 256, self.acti)
+        self.layer5 = down_sampling('conv', self.kernel_size, 2, self.padding, 256, 512, self.acti)
+        self.layer6 = down_sampling('conv', self.kernel_size, 2, self.padding, 512, 512, self.acti)
         # decoder
-        self.layer7 = up_sampling(mode='bilinear')
+        self.layer7 = up_sampling(mode='interp_bilinear')
         self.layer8 = conv_block('conv', 512, 512, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
-        self.layer9 = up_sampling(mode='bilinear')
+        self.layer9 = up_sampling(mode='interp_bilinear')
         self.layer10 = conv_block('conv', 1024, 256, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
-        self.layer11 = up_sampling(mode='bilinear')
+        self.layer11 = up_sampling(mode='interp_bilinear')
         self.layer12 = conv_block('conv', 512, 128, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
-        self.layer13 = up_sampling(mode='bilinear')
+        self.layer13 = up_sampling(mode='interp_bilinear')
         self.layer14 = conv_block('conv', 256, 64, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
         self.layer15 = conv_block('conv', 128, 1, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
         
