@@ -121,7 +121,7 @@ class Solver(object):
                 # forward propagation
                 pred = self.model(pet10, ct)
                 # compute loss
-                loss = self.loss_func(pred, pet60)
+                loss = self.loss_func(pred, ct, pet60)
                 # backward propagation
                 loss.backward()
                 # update weights
@@ -151,7 +151,7 @@ class Solver(object):
                     # forward propagation
                     pred = self.model(pet10, ct)
                     # compute loss
-                    loss = self.loss_func(pred, pet60)
+                    loss = self.loss_func(pred, ct, pet60)
                     # compute metric
                     metric = self.metric_func(pred, pet60)
                     valid_loss += loss.item()
