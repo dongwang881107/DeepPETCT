@@ -30,7 +30,7 @@ def main(args):
                             patch_n=args.patch_n if args.mode=='train' else None, 
                             patch_size=args.patch_size if args.mode=='train' else None)
     # determine neural networks
-    model = deeparch.unet_tmi()
+    model = eval('deeparch.{}()'.format(args.arch))
     if args.mode == 'train':
         print_model(model, (1,2,144,144))
     # determine loss functions
@@ -56,6 +56,7 @@ if __name__ == "__main__":
     subparser_train.add_argument('--num_workers', type=int, default=0, help='number of workers used')
     subparser_train.add_argument('--log_name', type=str, default='log', help='name of the log file')
     subparser_train.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/toy')
+    subparser_train.add_argument('--arch', type=str, default='unet_mp')
     subparser_train.add_argument('--batch_size', type=int, default=10, help='batch size per epoch')
     subparser_train.add_argument('--patch_n', type=int, default=10, help='number of patches extract from one image')
     subparser_train.add_argument('--patch_size', type=int, default=64, help='patch size')
@@ -75,6 +76,7 @@ if __name__ == "__main__":
     subparser_test.add_argument('--save_path', type=str, default='./test', help='saved path of the results')
     subparser_test.add_argument('--device_idx', nargs='+', type=int, default=[], help='gpu numbers')
     subparser_test.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/toy')
+    subparser_test.add_argument('--arch', type=str, default='unet_mp')
     subparser_test.add_argument('--num_workers', type=int, default=4, help='number of workers used')
     subparser_test.add_argument('--checkpoint', type=str, default='checkpoint_final', help='name of the checkpoint')
     subparser_test.add_argument('--log_name', type=str, default='log', help='name of the log file')
@@ -90,6 +92,7 @@ if __name__ == "__main__":
     subparser_plot.add_argument('--num_workers', type=int, default=2, help='number of workers used')
     subparser_plot.add_argument('--save_path', type=str, default='./test', help='saved path of the results')
     subparser_plot.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/toy')
+    subparser_plot.add_argument('--arch', type=str, default='unet_mp')
     subparser_plot.add_argument('--pred_name', type=str, default='test_pred', help='name of testing predictions to be plotted')
     subparser_plot.add_argument('--loss_name', type=str, default='train_loss', help='name of training loss')
     subparser_plot.add_argument('--valid_metric_name', type=str, default='valid_metric', help='name of validation metric')
