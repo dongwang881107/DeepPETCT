@@ -198,7 +198,7 @@ class UNET_TMI(nn.Module):
         self.padding = 1
         self.acti = 'relu'
         self.bn_flag = True
-# self.layer6 = down_sampling('conv', self.kernel_size, 2, self.padding, in_channels=64, out_channels=128, acti=self.acti)
+
         # fuse PET and CT with 1x1 kernel
         self.layer1 = conv_block('conv', 2, 1, 1, 1, 0, self.acti, self.bn_flag)
         # encoder
