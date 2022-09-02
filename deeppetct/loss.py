@@ -136,13 +136,12 @@ class iTVLoss(nn.Module):
         super(iTVLoss,self).__init__()
 
     def forward(self, x, y, z, modality):
-        h = x.size()[2]
-        w = x.size()[3]
-        grad_x = x[:,:,1:,:]-x[:,:,:h-1,:]
-        grad_x = torch.cat((grad_x,torch.zeros(x.size()[0],x.size()[1],1,x.size()[3])),2)
-        grad_y = x[:,:,:,1:]-x[:,:,:,:w-1]
-        grad_y = torch.cat((grad_y,torch.zeros(x.size()[0],x.size()[1],x.size()[2],1)),3)
-        itv = torch.sqrt(torch.pow(grad_x,2)+torch.pow(grad_y,2)).mean()
+        b,c,h,w = x.size()
+        grad_x1 = x[:,:,1:,:]-x[:,:,:h-1,:]
+        grad_x1 = torch.cat((grad_x1,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,1,w)),2)
+        grad_x2 = x[:,:,:,1:]-x[:,:,:,:w-1]
+        grad_x2 = torch.cat((grad_x2,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,h,1)),3)
+        itv = torch.sqrt(torch.pow(grad_x1,2)+torch.pow(grad_x2,2)+1e-8).mean()
         print(itv)
         return itv
 
@@ -152,11 +151,10 @@ class aTVLoss(nn.Module):
         super(aTVLoss,self).__init__()
 
     def forward(self, x, y, z, modality):
-        h = x.size()[2]
-        w = x.size()[3]
-        grad_x = x[:,:,1:,:]-x[:,:,:h-1,:]
-        grad_y = x[:,:,:,1:]-x[:,:,:,:w-1]
-        atv = torch.abs(grad_x).mean()+torch.abs(grad_y).mean()
+        _,_,h,w = x.size()
+        grad_x1 = x[:,:,1:,:]-x[:,:,:h-1,:]
+        grad_x2 = x[:,:,:,1:]-x[:,:,:,:w-1]
+        atv = torch.abs(grad_x1).mean()+torch.abs(grad_x2).mean()
         print(atv)
         return atv
 
@@ -167,29 +165,27 @@ class iSPLoss(nn.Module):
 
     def _compute_w(self, x, eta=0.1):
         # compute the edge indicator w function for x
-        h = x.size()[2]
-        w = x.size()[3]
+        b,c,h,w = x.size()
         # compute grad_x
         grad_x1 = x[:,:,1:,:]-x[:,:,:h-1,:]
-        grad_x1 = torch.cat((grad_x1,torch.zeros(x.size()[0],x.size()[1],1,x.size()[3])),2)
+        grad_x1 = torch.cat((grad_x1,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,1,w)),2)
         grad_x2 = x[:,:,:,1:]-x[:,:,:,:w-1]
-        grad_x2 = torch.cat((grad_x2,torch.zeros(x.size()[0],x.size()[1],x.size()[2],1)),3)
-        edge_incator = torch.sqrt(eta*eta+torch.pow(grad_x1,2)+torch.pow(grad_x2,2))
+        grad_x2 = torch.cat((grad_x2,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,h,1)),3)
+        edge_incator = torch.sqrt(eta*eta+torch.pow(grad_x1,2)+torch.pow(grad_x2,2)+1e-8)
         edge_incator = torch.div(eta,edge_incator)
         return edge_incator
 
     def forward(self, x, y, z, modality):
-        h = x.size()[2]
-        w = x.size()[3]
+        b,c,h,w = x.size()
         # compute grad_x
         grad_x1 = x[:,:,1:,:]-x[:,:,:h-1,:]
-        grad_x1 = torch.cat((grad_x1,torch.zeros(x.size()[0],x.size()[1],1,x.size()[3])),2)
+        grad_x1 = torch.cat((grad_x1,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,1,w)),2)
         grad_x2 = x[:,:,:,1:]-x[:,:,:,:w-1]
-        grad_x2 = torch.cat((grad_x2,torch.zeros(x.size()[0],x.size()[1],x.size()[2],1)),3)
+        grad_x2 = torch.cat((grad_x2,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,h,1)),3)
         if modality == 'CT':
-            isp = torch.sqrt(torch.pow(grad_x1,2)+torch.pow(grad_x2,2))*self._compute_w(y)
+            isp = torch.sqrt(torch.pow(grad_x1,2)+torch.pow(grad_x2,2)+1e-8)*self._compute_w(y)
         elif modality == 'PET':
-            isp = torch.sqrt(torch.pow(grad_x1,2)+torch.pow(grad_x2,2))*self._compute_w(z)
+            isp = torch.sqrt(torch.pow(grad_x1,2)+torch.pow(grad_x2,2)+1e-8)*self._compute_w(z)
         else:
             print('Modality [PET] or [CT]')
             sys.exit(0)
@@ -203,13 +199,12 @@ class aSPLoss(nn.Module):
 
     def _compute_D(self, x, gamma=1, eta=0.1):
         # compute the anisotropic weighting D for x
-        h = x.size()[2]
-        w = x.size()[3]
+        b,c,h,w = x.size()
         # compute grad_x
         grad_x1 = x[:,:,1:,:]-x[:,:,:h-1,:]
-        grad_x1 = torch.cat((grad_x1,torch.zeros(x.size()[0],x.size()[1],1,x.size()[3])),2)
+        grad_x1 = torch.cat((grad_x1,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,1,w)),2)
         grad_x2 = x[:,:,:,1:]-x[:,:,:,:w-1]
-        grad_x2 = torch.cat((grad_x2,torch.zeros(x.size()[0],x.size()[1],x.size()[2],1)),3)
+        grad_x2 = torch.cat((grad_x2,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,h,1)),3)
         # compute D
         up = gamma*(torch.pow(grad_x1,2)+torch.pow(grad_x2,2))
         down = eta*eta+(torch.pow(grad_x1,2)+torch.pow(grad_x2,2))
@@ -217,12 +212,11 @@ class aSPLoss(nn.Module):
         return D
 
     def forward(self, x, y, z, modality):
-        h = x.size()[2]
-        w = x.size()[3]
+        b,c,h,w = x.size()
         grad_x1 = x[:,:,1:,:]-x[:,:,:h-1,:]
-        grad_x1 = torch.cat((grad_x1,torch.zeros(x.size()[0],x.size()[1],1,x.size()[3])),2)
+        grad_x1 = torch.cat((grad_x1,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,1,w)),2)
         grad_x2 = x[:,:,:,1:]-x[:,:,:,:w-1]
-        grad_x2 = torch.cat((grad_x2,torch.zeros(x.size()[0],x.size()[1],x.size()[2],1)),3)
+        grad_x2 = torch.cat((grad_x2,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,h,1)),3)
         if modality == 'CT':
             D = self._compute_D(y)
         elif modality == 'PET':
@@ -230,6 +224,6 @@ class aSPLoss(nn.Module):
         else:
             print('Modality [PET] or [CT]')
             sys.exit(0)
-        asp = torch.sqrt(torch.pow(D*grad_x1,2)+torch.pow(D*grad_x2,2)).mean()
+        asp = torch.sqrt(torch.pow(D*grad_x1,2)+torch.pow(D*grad_x2,2)+1e-8).mean()
         print(asp)
         return asp
