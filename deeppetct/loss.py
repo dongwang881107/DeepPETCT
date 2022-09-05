@@ -14,6 +14,8 @@ __all__ = [
     "aTVLoss",
     "iSPLoss",
     "aSPLoss",
+    "riSPLoss",
+    "raSPLoss",
     "LossCompose",
 ]
 
@@ -115,7 +117,7 @@ class TVLoss(nn.Module):
     def __init__(self):
         super(TVLoss,self).__init__()
 
-    def forward(self,x,y,z,modality):
+    def forward(self, x , y , z, modality):
         batch_size = x.size()[0]
         h_x = x.size()[2]
         w_x = x.size()[3]
@@ -124,7 +126,6 @@ class TVLoss(nn.Module):
         h_tv = torch.pow((x[:,:,1:,:]-x[:,:,:h_x-1,:]),2).sum()
         w_tv = torch.pow((x[:,:,:,1:]-x[:,:,:,:w_x-1]),2).sum()
         tv = 2*(h_tv/count_h+w_tv/count_w)/batch_size
-        print(tv)
         return tv
 
     def _tensor_size(self,t):
@@ -142,7 +143,6 @@ class iTVLoss(nn.Module):
         grad_x2 = x[:,:,:,1:]-x[:,:,:,:w-1]
         grad_x2 = torch.cat((grad_x2,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,h,1)),3)
         itv = torch.sqrt(torch.pow(grad_x1,2)+torch.pow(grad_x2,2)+1e-8).mean()
-        print(itv)
         return itv
 
 class aTVLoss(nn.Module):
@@ -155,7 +155,6 @@ class aTVLoss(nn.Module):
         grad_x1 = x[:,:,1:,:]-x[:,:,:h-1,:]
         grad_x2 = x[:,:,:,1:]-x[:,:,:,:w-1]
         atv = torch.abs(grad_x1).mean()+torch.abs(grad_x2).mean()
-        print(atv)
         return atv
 
 class iSPLoss(nn.Module):
@@ -189,7 +188,6 @@ class iSPLoss(nn.Module):
         else:
             print('Modality [PET] or [CT]')
             sys.exit(0)
-        print(isp.mean())
         return isp.mean()
 
 class aSPLoss(nn.Module):
@@ -225,5 +223,80 @@ class aSPLoss(nn.Module):
             print('Modality [PET] or [CT]')
             sys.exit(0)
         asp = torch.sqrt(torch.pow(D*grad_x1,2)+torch.pow(D*grad_x2,2)+1e-8).mean()
-        print(asp)
         return asp
+
+class riSPLoss(nn.Module):
+    # relative isotropic Structure-Promoting loss
+    # |iSPLoss(PETAI,CT)-iSPLoss(PET60,CT)|
+    def __init__(self):
+        super(riSPLoss,self).__init__()
+
+    def _compute_w(self, x, eta=0.1):
+        # compute the edge indicator w function for x
+        b,c,h,w = x.size()
+        # compute grad_x
+        grad_x1 = x[:,:,1:,:]-x[:,:,:h-1,:]
+        grad_x1 = torch.cat((grad_x1,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,1,w)),2)
+        grad_x2 = x[:,:,:,1:]-x[:,:,:,:w-1]
+        grad_x2 = torch.cat((grad_x2,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,h,1)),3)
+        edge_incator = torch.sqrt(eta*eta+torch.pow(grad_x1,2)+torch.pow(grad_x2,2)+1e-8)
+        edge_incator = torch.div(eta,edge_incator)
+        return edge_incator
+
+    def forward(self, x, y, z, modality):
+        b,c,h,w = x.size()
+        indicator = self._compute_w(y)
+        # compute grad_x
+        grad_x1 = x[:,:,1:,:]-x[:,:,:h-1,:]
+        grad_x1 = torch.cat((grad_x1,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,1,w)),2)
+        grad_x2 = x[:,:,:,1:]-x[:,:,:,:w-1]
+        grad_x2 = torch.cat((grad_x2,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,h,1)),3)
+        # compute isp loss with repect to y
+        isp_x = torch.sqrt(torch.pow(grad_x1,2)+torch.pow(grad_x2,2)+1e-8)*indicator
+        # compute grad_z
+        grad_z1 = z[:,:,1:,:]-z[:,:,:h-1,:]
+        grad_z1 = torch.cat((grad_z1,(z[:,:,1,:]-z[:,:,1,:]).view(b,c,1,w)),2)
+        grad_z2 = z[:,:,:,1:]-z[:,:,:,:w-1]
+        grad_z2 = torch.cat((grad_z2,(z[:,:,1,:]-z[:,:,1,:]).view(b,c,h,1)),3)
+        # compute isp loss with repect to y
+        isp_z = torch.sqrt(torch.pow(grad_z1,2)+torch.pow(grad_z2,2)+1e-8)*indicator
+        return torch.pow(isp_x.mean()-isp_z.mean(),2)
+
+class raSPLoss(nn.Module):
+    # relative anisotropic Stucture-Promoting loss
+    # |aSPLoss(PETAI,CT)-aSPLoss(PET60,CT)|
+    def __init__(self):
+        super(raSPLoss,self).__init__()
+
+    def _compute_D(self, x, gamma=1, eta=0.1):
+        # compute the anisotropic weighting D for x
+        b,c,h,w = x.size()
+        # compute grad_x
+        grad_x1 = x[:,:,1:,:]-x[:,:,:h-1,:]
+        grad_x1 = torch.cat((grad_x1,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,1,w)),2)
+        grad_x2 = x[:,:,:,1:]-x[:,:,:,:w-1]
+        grad_x2 = torch.cat((grad_x2,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,h,1)),3)
+        # compute D
+        up = gamma*(torch.pow(grad_x1,2)+torch.pow(grad_x2,2))
+        down = eta*eta+(torch.pow(grad_x1,2)+torch.pow(grad_x2,2))
+        D = 1 - torch.div(up,down)
+        return D
+
+    def forward(self, x, y, z, modality):
+        b,c,h,w = x.size()
+        indicator = self._compute_D(y)
+        # compute grad_x
+        grad_x1 = x[:,:,1:,:]-x[:,:,:h-1,:]
+        grad_x1 = torch.cat((grad_x1,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,1,w)),2)
+        grad_x2 = x[:,:,:,1:]-x[:,:,:,:w-1]
+        grad_x2 = torch.cat((grad_x2,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,h,1)),3)
+        # compute asp loss with repect to y
+        asp_x = torch.sqrt(torch.pow(indicator*grad_x1,2)+torch.pow(indicator*grad_x2,2)+1e-8).mean()
+        # compute grad_z
+        grad_z1 = z[:,:,1:,:]-z[:,:,:h-1,:]
+        grad_z1 = torch.cat((grad_z1,(z[:,:,1,:]-z[:,:,1,:]).view(b,c,1,w)),2)
+        grad_z2 = z[:,:,:,1:]-z[:,:,:,:w-1]
+        grad_z2 = torch.cat((grad_z2,(z[:,:,1,:]-z[:,:,1,:]).view(b,c,h,1)),3)
+        # compute isp loss with repect to y
+        asp_z = torch.sqrt(torch.pow(indicator*grad_z1,2)+torch.pow(indicator*grad_z2,2)+1e-8).mean()
+        return torch.pow(asp_x-asp_z,2)

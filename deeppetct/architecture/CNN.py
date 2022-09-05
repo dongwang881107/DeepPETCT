@@ -1,8 +1,7 @@
 import torch.nn as nn
 import torch
 from deeppetct.architecture.blocks import *
-from pytorch_wavelets import DWTForward, DWTInverse
-
+# from pytorch_wavelets import DWTForward, DWTInverse
 
 class REDCNN(nn.Module):
     # Low-Dose CT With a Residual Encoder-Decoder Convolutional Neural Network
@@ -126,10 +125,6 @@ class UNET_MP(nn.Module):
         out = self.layer16(out)
         return out
 
-    @ classmethod
-    def compute_loss(cls):
-        return nn.MSELoss(reduction='sum')
-
 class UNET_MIA(nn.Module):
     # Ref: Towards lower-dose PET using physics-based uncertainty-aware 
     # multimodal learning with robustness to out-of-distribution data
@@ -196,10 +191,6 @@ class UNET_MIA(nn.Module):
         out = self.layer28(self.layer27(self.layer26(out)))
         return out
 
-    @ classmethod
-    def compute_loss(cls):
-        return nn.MSELoss(reduction='sum')
-
 class UNET_TMI(nn.Module):
     # 3D Auto-Context-Based Locality Adaptive Multi-Modality GANs for PET Synthesis
     # Page 1311, Figure 3
@@ -253,58 +244,54 @@ class UNET_TMI(nn.Module):
         out = self.layer15(out)
         return out
 
-    @ classmethod
-    def compute_loss(cls):
-        return nn.MSELoss(reduction='sum')
-
-# Ref: Deep Convolutional Framelets: A General Deep Learning Framework for Inverse Problems
-# Page 1025, Figure 10(b)
-# Multi-Channel Input
-# SIAM on Imaging Sciences
-class Framelets(nn.Module):
-    def __init__(self):
-        super(Framelets, self).__init__()
+# # Ref: Deep Convolutional Framelets: A General Deep Learning Framework for Inverse Problems
+# # Page 1025, Figure 10(b)
+# # Multi-Channel Input
+# # SIAM on Imaging Sciences
+# class Framelets(nn.Module):
+#     def __init__(self):
+#         super(Framelets, self).__init__()
         
-        self.kernel_size = 3
-        self.padding = 1
-        self.acti = 'relu'
-        self.bn_flag = True
-        self.num_channels = 64
-        self.wt = DWTForward(J=1, wave='haar', mode='zero')
-        self.iwt = DWTInverse(wave='haar', mode='zero')
+#         self.kernel_size = 3
+#         self.padding = 1
+#         self.acti = 'relu'
+#         self.bn_flag = True
+#         self.num_channels = 64
+#         self.wt = DWTForward(J=1, wave='haar', mode='zero')
+#         self.iwt = DWTInverse(wave='haar', mode='zero')
 
-        # downsampling (wavelet transform by 4 times)
-        self.scale0_conv1 = conv_block('conv', 2, self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale0_conv2 = conv_block('conv', self.num_channels, self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale1_conv1 = conv_block('conv', self.num_channels, 2*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale1_conv2 = conv_block('conv', 2*self.num_channels, 2*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale2_conv1 = conv_block('conv', 2*self.num_channels, 4*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale2_conv2 = conv_block('conv', 4*self.num_channels, 4*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale3_conv1 = conv_block('conv', 4*self.num_channels, 8*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale3_conv2 = conv_block('conv', 8*self.num_channels, 8*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         # downsampling (wavelet transform by 4 times)
+#         self.scale0_conv1 = conv_block('conv', 2, self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale0_conv2 = conv_block('conv', self.num_channels, self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale1_conv1 = conv_block('conv', self.num_channels, 2*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale1_conv2 = conv_block('conv', 2*self.num_channels, 2*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale2_conv1 = conv_block('conv', 2*self.num_channels, 4*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale2_conv2 = conv_block('conv', 4*self.num_channels, 4*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale3_conv1 = conv_block('conv', 4*self.num_channels, 8*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale3_conv2 = conv_block('conv', 8*self.num_channels, 8*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
         
-        # bottleneck layers
-        self.scale4_conv11 = conv_block('conv', 8*self.num_channels, 16*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale4_conv12 = conv_block('conv', 16*self.num_channels, 8*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale4_conv21 = conv_block('conv', 8*self.num_channels, 16*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale4_conv22 = conv_block('conv', 16*self.num_channels, 8*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale4_conv31 = conv_block('conv', 8*self.num_channels, 16*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale4_conv32 = conv_block('conv', 16*self.num_channels, 8*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale4_conv41 = conv_block('conv', 8*self.num_channels, 16*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale4_conv42 = conv_block('conv', 16*self.num_channels, 8*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         # bottleneck layers
+#         self.scale4_conv11 = conv_block('conv', 8*self.num_channels, 16*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale4_conv12 = conv_block('conv', 16*self.num_channels, 8*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale4_conv21 = conv_block('conv', 8*self.num_channels, 16*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale4_conv22 = conv_block('conv', 16*self.num_channels, 8*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale4_conv31 = conv_block('conv', 8*self.num_channels, 16*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale4_conv32 = conv_block('conv', 16*self.num_channels, 8*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale4_conv41 = conv_block('conv', 8*self.num_channels, 16*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale4_conv42 = conv_block('conv', 16*self.num_channels, 8*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
         
-        # upsampling (inverse wavelet transform by 4 times)
-        self.scale3_deconv1 = conv_block('conv', 5*8*self.num_channels, 8*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale3_deconv2 = conv_block('conv', 8*self.num_channels, 4*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale2_deconv1 = conv_block('conv', 5*4*self.num_channels, 4*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale2_deconv2 = conv_block('conv', 4*self.num_channels, 2*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale1_deconv1 = conv_block('conv', 5*2*self.num_channels, 2*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale1_deconv2 = conv_block('conv', 2*self.num_channels, self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale0_deconv1 = conv_block('conv', 5*self.num_channels, self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
-        self.scale0_deconv2 = conv_block('conv', self.num_channels, self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         # upsampling (inverse wavelet transform by 4 times)
+#         self.scale3_deconv1 = conv_block('conv', 5*8*self.num_channels, 8*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale3_deconv2 = conv_block('conv', 8*self.num_channels, 4*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale2_deconv1 = conv_block('conv', 5*4*self.num_channels, 4*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale2_deconv2 = conv_block('conv', 4*self.num_channels, 2*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale1_deconv1 = conv_block('conv', 5*2*self.num_channels, 2*self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale1_deconv2 = conv_block('conv', 2*self.num_channels, self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale0_deconv1 = conv_block('conv', 5*self.num_channels, self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
+#         self.scale0_deconv2 = conv_block('conv', self.num_channels, self.num_channels, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
 
-    def forward(self, x):
-        return True
+#     def forward(self, x):
+#         return True
 
 
 
