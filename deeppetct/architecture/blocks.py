@@ -98,4 +98,4 @@ class SelfAttenBlock(nn.Module):
         out = out.view(batch_size,C,width,height)
         
         out = self.gamma*out + x
-        return out
+        return out, attention

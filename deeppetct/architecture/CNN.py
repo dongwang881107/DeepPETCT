@@ -20,7 +20,7 @@ class REDCNN(nn.Module):
         self.bn_flag = bn_flag # batch normalization
         self.sa_flag = sa_flag # self attention
         if self.sa_flag == True:
-            self.sa = SelfAttenBlock(self.out_channel)
+            self.sa = SelfAttenBlock(self.out_channel*2)
 
         # ct branch
         self.layer_ct1 = conv_block('conv', 1, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
@@ -55,6 +55,8 @@ class REDCNN(nn.Module):
         res4 = out_pet
         out_pet = self.layer_pet5(out_pet)
         out_com = torch.cat((out_pet,out_ct), dim=1)
+        if self.sa_flag == True:
+            out_com, attention = self.sa(out_com)
         out_com = self.layer_com1(out_com)
         out_com = out_com + res4
         out_com = self.layer_com2(out_com)
@@ -64,7 +66,7 @@ class REDCNN(nn.Module):
         out_com = self.layer_com4(out_com)
         # out_com = out_com + res1
         out_com = self.layer_com5(out_com)
-        return out_com
+        return out_com, attention if self.sa_flag == True else out_com
 
 
 class UNET_MP(nn.Module):

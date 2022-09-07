@@ -119,7 +119,7 @@ class Solver(object):
                 self.model.zero_grad()
                 optim.zero_grad()
                 # forward propagation
-                pred = self.model(pet10, ct)
+                pred, _ = self.model(pet10, ct)
                 # compute loss
                 loss = self.loss_func(pred, ct, pet60)
                 # backward propagation
@@ -149,7 +149,7 @@ class Solver(object):
                         ct = ct.view(-1, 1, self.patch_size, self.patch_size)
                         pet60 = pet60.view(-1, 1, self.patch_size, self.patch_size) 
                     # forward propagation
-                    pred = self.model(pet10, ct)
+                    pred, _ = self.model(pet10, ct)
                     # compute loss
                     loss = self.loss_func(pred, ct, pet60)
                     # compute metric
@@ -217,7 +217,7 @@ class Solver(object):
                 ct = ct.float().to(self.device)
                 pet60 = pet60.float().to(self.device)
                 # predict
-                pred = self.model(pet10, ct)
+                pred, attention = self.model(pet10, ct)
                 pred = pred/torch.max(pred)
                 metric_x = self.metric_func(pet10, pet60)
                 metric_pred = self.metric_func(pred, pet60)
@@ -226,8 +226,10 @@ class Solver(object):
                 # save predictions
                 if i == 0:
                     total_pred = pred
+                    total_attention = attention
                 else:
                     total_pred = torch.cat((total_pred,pred),0)
+                    total_attention = torch.cat((total_attention,attention),0)
 
         # print results
         print_metric(total_metric_x, total_metric_pred)
@@ -236,6 +238,7 @@ class Solver(object):
         # save results
         print('{:-^118s}'.format('Saving results!'))
         save_pred(total_pred.cpu(), self.save_path, self.pred_name)
+        save_pred(total_attention.cpu(), self.save_path, 'test_attention') # save attention
         save_metric((total_metric_x, total_metric_pred), self.save_path, self.metric_name)
         print('{:-^118s}'.format('Done!'))
 
