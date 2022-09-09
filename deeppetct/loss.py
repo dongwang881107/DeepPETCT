@@ -3,12 +3,15 @@ import math
 import sys
 import torch.nn as nn
 import torch.nn.functional as F
+
 from torch.autograd import Variable
+from torchvision.models import vgg19
 
 __all__ = [
     "MSELoss",
     "L1Loss",
     "SSIMLoss", 
+    "PerceptualLoss",
     "TVLoss",
     "iTVLoss",
     "aTVLoss",
@@ -112,6 +115,20 @@ class SSIMLoss(nn.Module):
             print('Modality [PET] or [CT]')
             sys.exit(0)
 
+class PerceptualLoss(nn.Module):
+    def __init__(self):
+        super(PerceptualLoss,self).__init__()
+        extractor = vgg19(pretrained=True)
+        self.feature = nn.Sequential(*list(extractor.features.children())[:35])
+        self.perceptual_metric = nn.MSELoss()
+
+    def forward(self, x, y, z, modality):
+        x = x.repeat(1,3,1,1)
+        z = z.repeat(1,3,1,1)
+        x_feature = self.feature(x)
+        z_feature = self.feature(z)
+        perceptual_loss = self.perceptual_metric(x_feature, z_feature)
+        return perceptual_loss
 
 class TVLoss(nn.Module):
     def __init__(self):

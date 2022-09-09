@@ -4,6 +4,7 @@ import torch
 import glob
 import matplotlib.pyplot as plt
 
+from torchvision.transforms import Resize 
 from deeppetct.architecture.blocks import *
 from deeppetct.preprocessing import *
 from deeppetct.postprocessing import *
@@ -43,12 +44,14 @@ class Solver(object):
             self.metric_func = metric_func
             self.metric_name = args.metric_name
             self.pred_name = args.pred_name
+            self.atten_name = args.atten_name
             self.checkpoint = args.checkpoint
             self.device = torch.device(set_device(self.device_idx))
             self.model = model
         else:
             # load plotting parameters
             self.case_idx = args.case_idx
+            self.atten_idx = args.atten_idx
             self.trans_idx = args.trans_idx
             self.sag_idx = args.sag_idx
             self.coron_idx = args.coron_idx
@@ -57,10 +60,12 @@ class Solver(object):
             self.valid_metric_name = args.valid_metric_name
             self.test_metric_name = args.test_metric_name
             self.pred_name = args.pred_name
+            self.atten_name = args.atten_name   
             self.not_save_plot = args.not_save_plot
             self.not_plot_loss = args.not_plot_loss
             self.not_plot_metric = args.not_plot_metric
             self.not_plot_pred = args.not_plot_pred
+            self.not_plot_atten = args.not_plot_atten
 
     # training mode
     def train(self):
@@ -224,12 +229,13 @@ class Solver(object):
                 total_metric_x.append(metric_x)
                 total_metric_pred.append(metric_pred)
                 # save predictions
+                resizer = Resize([144,144])
                 if i == 0:
                     total_pred = pred
-                    total_attention = attention
+                    total_attention = resizer(attention)
                 else:
                     total_pred = torch.cat((total_pred,pred),0)
-                    total_attention = torch.cat((total_attention,attention),0)
+                    total_attention = torch.cat((total_attention,resizer(attention)),0)
 
         # print results
         print_metric(total_metric_x, total_metric_pred)
@@ -238,7 +244,7 @@ class Solver(object):
         # save results
         print('{:-^118s}'.format('Saving results!'))
         save_pred(total_pred.cpu(), self.save_path, self.pred_name)
-        save_pred(total_attention.cpu(), self.save_path, 'test_attention') # save attention
+        save_pred(total_attention.cpu(), self.save_path, self.atten_name) # save attention
         save_metric((total_metric_x, total_metric_pred), self.save_path, self.metric_name)
         print('{:-^118s}'.format('Done!'))
 
@@ -287,7 +293,61 @@ class Solver(object):
                 plt.legend()
                 self._plot(fig, 'valid_'+keys[j].lower())
 
-        # plot predictions in transverse/sagittal/coronal plane 
+        # plot attention maps if exist
+        if self.not_plot_atten:
+            atten_path = os.path.join(self.save_path, 'stat', self.atten_name+'.npy')
+            pred_path = os.path.join(self.save_path, 'stat', self.pred_name+'.npy')
+            atten = np.load(atten_path)
+            pred = np.load(pred_path)
+            data_name = self.dataloader.dataset.get_path()
+            # get case number
+            all_cases = []
+            for name in data_name[0]:
+                case_name = name.split('/')[-3]
+                if case_name not in all_cases:
+                    all_cases.append(case_name)
+            for idx in self.case_idx:
+                if idx in range(len(all_cases)):
+                    # load data
+                    case_path = os.path.join(self.data_path, 'testing', all_cases[idx])
+                    pet10_path = sorted(glob.glob(os.path.join(case_path, '10s/*.npy')))
+                    case_len = len(pet10_path)
+                    start_idx = data_name[0].index(pet10_path[0])
+                    p_3d = np.squeeze(pred)[start_idx:start_idx+case_len,:,:]
+                    a_3d = np.squeeze(atten)[start_idx:start_idx+case_len,:,:]
+                    # create fig/case_idx folder if not exist
+                    fig_path = os.path.join(self.save_path, 'fig', all_cases[idx])
+                if not os.path.exists(fig_path):
+                    os.makedirs(fig_path)
+                if len(self.atten_idx) > 0:
+                    for i in self.atten_idx:
+                        p = p_3d[i,:,:]
+                        a = a_3d[i,:,:]
+                        p = p/np.max(p)
+                        a = a/np.max(a)
+                        # blur attention map for better visulization
+                        a = cv2.blur(a,(5,5))
+                        a = cv2.blur(a,(5,5))
+                        a = cv2.blur(a,(5,5))
+                        title = ['Proposed', 'Attention', 'Overlay']
+                        fig = plt.figure(figsize=(15,4))
+                        ax = fig.add_subplot(1,len(title),1)
+                        im = ax.imshow(p, cmap=cmap)
+                        ax.set_title(title[0], fontsize=fs)
+                        ax.axis('off')
+                        ax = fig.add_subplot(1,len(title),2)
+                        im = ax.imshow(a, interpolation='bicubic', cmap='jet')
+                        ax.set_title(title[1], fontsize=fs)
+                        ax.axis('off')
+                        ax = fig.add_subplot(1,len(title),3)
+                        im = ax.imshow(p, alpha=1, cmap=cmap)
+                        im = ax.imshow(a, alpha=0.5, interpolation='nearest', cmap='jet')
+                        ax.set_title(title[2], fontsize=fs)
+                        ax.axis('off')
+                        fig_name = os.path.join(all_cases[idx], 'atten_'+pet10_path[i].split('/')[-1].split('.')[0])
+                        self._plot(fig, fig_name)
+
+        # plot predictions/attentions in transverse/sagittal/coronal plane 
         if self.not_plot_pred:
             pred_path = os.path.join(self.save_path, 'stat', self.pred_name+'.npy')
             pred = np.load(pred_path)
@@ -335,6 +395,7 @@ class Solver(object):
                             ct_trans = ct_trans/np.max(ct_trans)
                             pet60_trans = pet60_trans/np.max(pet60_trans)
                             p_trans = p_trans/np.max(p_trans)
+                            # plot preditions
                             data = (pet10_trans,ct_trans,p_trans,pet60_trans)
                             title = ['10s', 'CT', 'Proposed', '60s']
                             fig = plt.figure(figsize=(15,4))
@@ -355,6 +416,40 @@ class Solver(object):
                             plt.suptitle(caption, fontsize=10, y=0.15)
                             fig_name = os.path.join(all_cases[idx], pet10_path[i].split('/')[-1].split('.')[0])
                             self._plot(fig, fig_name)
+                            # plot difference images
+                            data = (pet10_trans,pet60_trans,p_trans,np.abs(pet10_trans-p_trans),np.abs(pet60_trans-p_trans),np.abs(p_trans-p_trans))
+                            title = ['10s','60s','Proposed','|Proposed-10s|','|Proposed-60s|','|Proposed-Proposed|']
+                            fig = plt.figure(figsize=(15,8))
+                            for j in range(len(data)):
+                                ax = fig.add_subplot(2,3,j+1)
+                                im = ax.imshow(data[j], cmap=cmap)
+                                ax.set_title(title[j], fontsize=fs)
+                                ax.axis('off')
+                                fig.colorbar(im, ax=ax, fraction=0.045)
+                            fig_name = os.path.join(all_cases[idx], 'diff_'+pet10_path[i].split('/')[-1].split('.')[0])
+                            self._plot(fig, fig_name)
+                            # plot gradient images
+                            pet10_x = cv2.Sobel(pet10_trans,cv2.CV_64F,1,0)
+                            pet10_y = cv2.Sobel(pet10_trans,cv2.CV_64F,0,1)
+                            pet10_grad = np.sqrt(pet10_x*pet10_x+pet10_y*pet10_y)
+                            pet60_x = cv2.Sobel(pet60_trans,cv2.CV_64F,1,0)
+                            pet60_y = cv2.Sobel(pet60_trans,cv2.CV_64F,0,1)
+                            pet60_grad = np.sqrt(pet60_x*pet60_x+pet60_y*pet60_y)
+                            p_x = cv2.Sobel(p_trans,cv2.CV_64F,1,0)
+                            p_y = cv2.Sobel(p_trans,cv2.CV_64F,0,1)
+                            p_grad = np.sqrt(p_x*p_x+p_y*p_y)
+                            data = (pet10_trans,pet60_trans,p_trans,pet10_grad,pet60_grad,p_grad)
+                            title = ['10s','60s','Proposed','10s gradient','60s gradient','Proposed gradient']
+                            fig = plt.figure(figsize=(15,8))
+                            for j in range(len(data)):
+                                ax = fig.add_subplot(2,3,j+1)
+                                im = ax.imshow(data[j], cmap=cmap)
+                                ax.set_title(title[j], fontsize=fs)
+                                ax.axis('off')
+                                fig.colorbar(im, ax=ax, fraction=0.045)
+                            fig_name = os.path.join(all_cases[idx], 'grad_'+pet10_path[i].split('/')[-1].split('.')[0])
+                            self._plot(fig, fig_name)
+
                     # * plot sagittal plane
                     if len(self.sag_idx) > 0:
                         for i in self.sag_idx:

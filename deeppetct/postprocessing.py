@@ -3,6 +3,9 @@ import os
 import time
 import numpy as np
 import torch.nn as nn
+import matplotlib.pyplot as plt
+import cv2
+
 from torchinfo import summary
 
 
@@ -117,3 +120,26 @@ def save_pred(pred, save_path, pred_name):
     pred_path = os.path.join(save_path, 'stat', pred_name+'.npy')
     np.save(pred_path,pred)
     print('{:>45} => {:<40}'.format('Testing predictions saved in', pred_path))
+
+# plot attention map
+def plot_attention(pred_path, attention_path, idx=0):
+    """
+    pred_path: path of the predictions
+    attention_path: path of attention map
+    idx: index of the prediction to be plotted
+    """
+    # load the predictions and attention maps
+    preds = np.load(pred_path).squeeze()
+    attentions = np.load(attention_path).squeeze()
+    num_test, height, weight = preds.shape
+    assert(num_test == attentions.shape[0])
+    pred = preds[idx,:,:].squeeze()
+    attention = attentions[idx,:,:].squeeze()
+    # plot prediction
+    plt.subplots(nrows=1, ncols=2, figsize=(10,10))
+    plt.imshow(pred, alpha=1, cmap='gray_r')
+    plt.axis('off')
+    # plot attention map
+    attention = cv2.resize(attention, (height, weight))
+    attention = attention/np.max(attention)
+    plt.imshow(attention, alpha=0.5, interpolation='nearest', cmap='hot')
