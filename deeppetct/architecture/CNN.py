@@ -20,7 +20,10 @@ class REDCNN(nn.Module):
         self.bn_flag = bn_flag # batch normalization
         self.sa_flag = sa_flag # self attention
         if self.sa_flag == True:
-            self.sa = SelfAttenBlock(self.out_channel*2)
+            self.sa_ct = SelfAttenBlock(self.out_channel)
+            self.sa_pet = SelfAttenBlock(self.out_channel)
+            self.sa_com1 = SelfAttenBlock(self.out_channel*2)
+            self.sa_com2 = SelfAttenBlock(self.out_channel)
 
         # ct branch
         self.layer_ct1 = conv_block('conv', 1, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
@@ -44,27 +47,31 @@ class REDCNN(nn.Module):
         self.layer_com5 = conv_block('trans', self.out_channel, 1, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)
 
     def forward(self, pet10, ct):
-        out_ct = self.layer_ct5(self.layer_ct4(self.layer_ct3(self.layer_ct2(self.layer_ct1(ct)))))
-        out_pet = self.layer_pet1(pet10)
-        # res1 = out_pet
-        out_pet = self.layer_pet2(out_pet)
+        # ct branch
+        out_ct = self.layer_ct2(self.layer_ct1(ct))
+        if self.sa_flag == True:
+            out_ct, _ = self.sa_ct(out_ct)
+        out_ct = self.layer_ct5(self.layer_ct4(self.layer_ct3(out_ct)))
+        # pet branch
+        out_pet = self.layer_pet2(self.layer_pet1(pet10))
+        res1 = out_pet
+        if self.sa_flag == True:
+            out_pet, _ = self.sa_ct(out_pet)
+        out_pet = self.layer_pet4(self.layer_pet3(out_pet))
         res2 = out_pet
-        out_pet = self.layer_pet3(out_pet)
-        # res3 = out_pet
-        out_pet = self.layer_pet4(out_pet)
-        res4 = out_pet
         out_pet = self.layer_pet5(out_pet)
+        # combine together
         out_com = torch.cat((out_pet,out_ct), dim=1)
         if self.sa_flag == True:
-            out_com, attention = self.sa(out_com)
+            out_com, _ = self.sa_com1(out_com)
         out_com = self.layer_com1(out_com)
-        out_com = out_com + res4
-        out_com = self.layer_com2(out_com)
-        # out_com = out_com + res3
-        out_com = self.layer_com3(out_com)
         out_com = out_com + res2
+        out_com = self.layer_com2(out_com)
+        if self.sa_flag == True:
+            out_com, attention = self.sa_com2(out_com)
+        out_com = self.layer_com3(out_com)
+        out_com = out_com + res1
         out_com = self.layer_com4(out_com)
-        # out_com = out_com + res1
         out_com = self.layer_com5(out_com)
         return out_com, attention if self.sa_flag == True else out_com
 

@@ -416,33 +416,24 @@ class Solver(object):
                             plt.suptitle(caption, fontsize=10, y=0.15)
                             fig_name = os.path.join(all_cases[idx], pet10_path[i].split('/')[-1].split('.')[0])
                             self._plot(fig, fig_name)
-                            # plot difference images
-                            data = (pet10_trans,pet60_trans,p_trans,np.abs(pet10_trans-p_trans),np.abs(pet60_trans-p_trans),np.abs(p_trans-p_trans))
-                            title = ['10s','60s','Proposed','|Proposed-10s|','|Proposed-60s|','|Proposed-Proposed|']
-                            fig = plt.figure(figsize=(15,8))
-                            for j in range(len(data)):
-                                ax = fig.add_subplot(2,3,j+1)
-                                im = ax.imshow(data[j], cmap=cmap)
-                                ax.set_title(title[j], fontsize=fs)
-                                ax.axis('off')
-                                fig.colorbar(im, ax=ax, fraction=0.045)
-                            fig_name = os.path.join(all_cases[idx], 'diff_'+pet10_path[i].split('/')[-1].split('.')[0])
-                            self._plot(fig, fig_name)
                             # plot gradient images
                             pet10_x = cv2.Sobel(pet10_trans,cv2.CV_64F,1,0)
                             pet10_y = cv2.Sobel(pet10_trans,cv2.CV_64F,0,1)
                             pet10_grad = np.sqrt(pet10_x*pet10_x+pet10_y*pet10_y)
+                            ct_x = cv2.Sobel(ct_trans,cv2.CV_64F,1,0)
+                            ct_y = cv2.Sobel(ct_trans,cv2.CV_64F,0,1)
+                            ct_grad = np.sqrt(ct_x*ct_x+ct_y*ct_y)
                             pet60_x = cv2.Sobel(pet60_trans,cv2.CV_64F,1,0)
                             pet60_y = cv2.Sobel(pet60_trans,cv2.CV_64F,0,1)
                             pet60_grad = np.sqrt(pet60_x*pet60_x+pet60_y*pet60_y)
                             p_x = cv2.Sobel(p_trans,cv2.CV_64F,1,0)
                             p_y = cv2.Sobel(p_trans,cv2.CV_64F,0,1)
                             p_grad = np.sqrt(p_x*p_x+p_y*p_y)
-                            data = (pet10_trans,pet60_trans,p_trans,pet10_grad,pet60_grad,p_grad)
-                            title = ['10s','60s','Proposed','10s gradient','60s gradient','Proposed gradient']
+                            data = (pet10_trans,ct_trans,pet60_trans,p_trans,pet10_grad,ct_grad,pet60_grad,p_grad)
+                            title = ['10s','CT','60s','Proposed','10s gradient','CT gradient','60s gradient','Proposed gradient']
                             fig = plt.figure(figsize=(15,8))
                             for j in range(len(data)):
-                                ax = fig.add_subplot(2,3,j+1)
+                                ax = fig.add_subplot(2,4,j+1)
                                 im = ax.imshow(data[j], cmap=cmap)
                                 ax.set_title(title[j], fontsize=fs)
                                 ax.axis('off')

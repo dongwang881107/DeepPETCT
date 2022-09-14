@@ -12,6 +12,17 @@ __all__ = [
     "MetricsCompose",
 ]
 
+# compose metric functions together
+class MetricsCompose:
+    def __init__(self, metrics):
+        self.metrics = metrics
+
+    def __call__(self, x, y, batch=True):
+        metrics = {}
+        for m in self.metrics:
+            metrics = dict(metrics, **m(x,y,batch=batch))
+        return metrics
+
 # compare metrics for all batches
 def batch_metric(x, y, name, reduction='sum'):
     metric = 0
@@ -86,13 +97,3 @@ class ComparePSNR:
 class CompareSSIM:
     def __call__(self, x, y, batch=True):
         return {'SSIM':batch_metric(x,y,'SSIM')} if batch else {'SSIM':compare_SSIM(x,y)}
-
-class MetricsCompose:
-    def __init__(self, metrics):
-        self.metrics = metrics
-
-    def __call__(self, x, y, batch=True):
-        metrics = {}
-        for m in self.metrics:
-            metrics = dict(metrics, **m(x,y,batch=batch))
-        return metrics
