@@ -76,6 +76,8 @@ class WGANVGG_extractor(nn.Module):
         return out
 
 # WGANVGG: GAN with Wasserstein + perceptual loss
+# Low-Dose CT Image Denoising Using a Generative Adversarial Network With Wasserstein Distance and Perceptual Loss
+# 2018, TMI, Uni-Modality method
 class WGANVGG(nn.Module):
     def __init__(self, patch_size=64):
         super(WGANVGG, self).__init__()

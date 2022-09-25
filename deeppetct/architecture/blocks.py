@@ -25,7 +25,7 @@ def conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, ac
     if mode == 'conv':
         conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding)
     elif mode == 'trans':
-        conv = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding)
+        conv = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding, output_padding=1 if stride>1 else 0)
     else:
         print('[conv] | [trans]')
         sys.exit(0)
@@ -36,9 +36,9 @@ def conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, ac
     return nn.Sequential(*layers)
 
 # down sampling block
-def down_sampling(mode, kernel_size, stride, padding, in_channels=None, out_channels=None, acti=None):
+def down_sampling(mode, kernel_size, stride, padding, in_channels=None, out_channels=None, acti=None, bn_flag=False):
     if mode == 'conv':
-        down = conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti)
+        down = conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti, bn_flag)
     elif mode =='maxpooling':
         down = nn.MaxPool2d(kernel_size, stride, padding)
     else:
@@ -48,9 +48,9 @@ def down_sampling(mode, kernel_size, stride, padding, in_channels=None, out_chan
     return nn.Sequential(*layers)
 
 # up sampling block
-def up_sampling(mode, kernel_size, stride, padding, in_channels=None, out_channels=None, acti=None):
+def up_sampling(mode, kernel_size, stride, padding, in_channels=None, out_channels=None, acti=None, bn_flag=False):
     if mode == 'trans':
-        up = conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti)
+        up = conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti, bn_flag)
     elif mode == 'interp_nearest':
         up = nn.Upsample(scale_factor=2, mode='nearest')
     elif mode =='interp_bilinear':

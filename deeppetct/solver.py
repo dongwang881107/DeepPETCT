@@ -264,7 +264,7 @@ class Solver(object):
                 real = real.float().to(self.device)
                 # predict
                 fake = self.model.generator(x)
-                fake = fake/torch.max(fake)
+                # fake = fake/torch.max(fake)
                 metric_x = self.metric_func(x, real)
                 metric_pred = self.metric_func(fake, real)
                 total_metric_x.append(metric_x)
