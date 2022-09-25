@@ -247,7 +247,7 @@ class UNET_RADIOLOGY(nn.Module):
         
         self.kernel_size = 3
         self.padding = 1
-        self.acti = 'leaky_relu'
+        self.acti = 'relu'
         self.bn_flag = True
 
         # encoder
