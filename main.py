@@ -29,9 +29,10 @@ def main(args):
                             patch_n=args.patch_n if args.mode=='train' else None, 
                             patch_size=args.patch_size if args.mode=='train' else None)
     # determine neural networks
-    model = deeparch.wganvgg(args.patch_size)
+    # model = deeparch.gan_tmi(args.patch_size, args.lambda1)
+    model = deeparch.wganvgg(args.patch_size, args.lambda1, args.lambda2)
     if args.mode == 'train':
-        print_model(model)
+        print_model(model, (1,2,144,144), (1,1,64,64))
     # determine metric functions
     metric_func = MetricsCompose([ComputeRMSE(), ComputePSNR(), ComputeSSIM()])
     # build solver
@@ -72,6 +73,7 @@ if __name__ == "__main__":
     subparser_test.add_argument('--save_path', type=str, default='./gan/test', help='saved path of the results')
     subparser_test.add_argument('--device_idx', nargs='+', type=int, default=[], help='gpu numbers')
     subparser_test.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/toy')
+    subparser_test.add_argument('--lambda1', type=float, default=1e-1, help='parameter in generator loss')
     subparser_test.add_argument('--num_workers', type=int, default=4, help='number of workers used')
     subparser_test.add_argument('--patch_size', type=int, default=144, help='patch size')
     subparser_test.add_argument('--checkpoint', type=str, default='checkpoint_best', help='name of the checkpoint')

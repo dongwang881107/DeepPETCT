@@ -6,7 +6,7 @@ import sys
 def get_acti(acti):
     return nn.ModuleDict([
         ['relu', nn.ReLU()],
-        ['leaky_relu', nn.LeakyReLU(negative_slope=0.01)],
+        ['leaky_relu', nn.LeakyReLU(negative_slope=0.2)],
     ])[acti]
 
 # initialize model
@@ -48,7 +48,7 @@ def down_sampling(mode, kernel_size, stride, padding, in_channels=None, out_chan
     return nn.Sequential(*layers)
 
 # up sampling block
-def up_sampling(mode, kernel_size, stride, padding, in_channels=None, out_channels=None, acti=None, bn_flag=False):
+def up_sampling(mode, kernel_size=None, stride=None, padding=None, in_channels=None, out_channels=None, acti=None, bn_flag=False):
     if mode == 'trans':
         up = conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti, bn_flag)
     elif mode == 'interp_nearest':

@@ -93,10 +93,10 @@ class Solver(object):
         if len(self.device_idx)>1:
             self.model.generator = nn.DataParallel(self.model.generator)
             self.model.discriminator = nn.DataParallel(self.model.discriminator)
-            self.model.extractor = nn.DataParallel(self.model.extractor)
+            # self.model.extractor = nn.DataParallel(self.model.extractor)
         self.model.generator = self.model.generator.to(self.device)
         self.model.discriminator = self.model.discriminator.to(self.device)
-        self.model.extractor = self.model.extractor.to(self.device)
+        # self.model.extractor = self.model.extractor.to(self.device)
 
         # compute total patch number
         if (self.patch_size!=None) & (self.patch_n!=None):
@@ -113,9 +113,6 @@ class Solver(object):
             # training
             dis_train_loss = 0.0
             gen_train_loss = 0.0
-            grad_train_loss = 0.0
-            perc_train_loss = 0.0
-            wass_train_loss = 0.0
             for i, (x,real) in enumerate(self.dataloader[0]):
                 # move data to device
                 x = x.float().to(self.device)
@@ -134,7 +131,8 @@ class Solver(object):
                     d_fake = self.model.discriminator(fake)
                     d_real = self.model.discriminator(real)
                     # compute loss
-                    dis_loss, grad_loss = self.model.discriminator_loss(fake, real, d_fake, d_real, self.lambda2, self.device)
+                    # dis_loss, grad_loss = self.model.discriminator_loss(fake, real, d_fake, d_real, self.lambda2, self.device)
+                    dis_loss = self.model.discriminator_loss(fake, real, d_fake, d_real)
                     # backward propagation
                     dis_loss.backward(retain_graph=True)
                     # update weights
@@ -143,7 +141,6 @@ class Solver(object):
                         p.data.clamp_(-0.01,0.01)
                 # update statistics
                 dis_train_loss += dis_loss.item()
-                grad_train_loss += grad_loss.item()
                 # * train generator
                 self.model.generator.train()
                 self.model.generator.zero_grad()
@@ -152,17 +149,16 @@ class Solver(object):
                 fake = self.model.generator(x)
                 d_fake = self.model.discriminator(fake)
                 # compute loss
-                gen_loss, perc_loss = self.model.generator_loss(fake, real, d_fake, self.lambda1)
+                # gen_loss, perc_loss = self.model.generator_loss(fake, real, d_fake, self.lambda1)
+                gen_loss = self.model.generator_loss(fake, real, d_fake)
                 # backward propagation
                 gen_loss.backward()
                 # update weights
                 gen_optim.step()
                 # update statistics
                 gen_train_loss += gen_loss.item()
-                perc_train_loss += perc_loss.item()
-                wass_train_loss += dis_loss.item()-grad_loss.item() + gen_loss.item()-perc_loss.item()
             # update statistics
-            total_train_loss.append((dis_train_loss, gen_train_loss, grad_train_loss, perc_train_loss, wass_train_loss))
+            total_train_loss.append((dis_train_loss, gen_train_loss))
             # update scheduler    
             dis_sched.step()
             gen_sched.step()
@@ -170,9 +166,6 @@ class Solver(object):
             # validation
             dis_valid_loss = 0.0
             gen_valid_loss = 0.0
-            grad_valid_loss = 0.0
-            perc_valid_loss = 0.0
-            wass_valid_loss = 0.0
             valid_metric = {}
             self.model.generator.eval()
             self.model.discriminator.eval()
@@ -191,19 +184,16 @@ class Solver(object):
                     d_real = self.model.discriminator(real)
                     # compute loss
                     with torch.enable_grad():
-                        dis_loss, grad_loss = self.model.discriminator_loss(fake, real, d_fake, d_real, self.lambda2, self.device)
-                    gen_loss, perc_loss = self.model.generator_loss(fake, real, d_fake, self.lambda1)
+                        dis_loss = self.model.discriminator_loss(fake, real, d_fake, d_real)
+                        gen_loss = self.model.generator_loss(fake, real, d_fake)
                     # compute metric
                     # fake = fake/torch.max(fake)
                     metric = self.metric_func(fake, real)
                     dis_valid_loss += dis_loss.item()
                     gen_valid_loss += gen_loss.item()
-                    grad_valid_loss += grad_loss.item()
-                    perc_valid_loss += perc_loss.item()
-                    wass_valid_loss += dis_loss.item()-grad_loss.item() + gen_loss.item()-perc_loss.item()
                     valid_metric = metric if i == 0 else {key:valid_metric[key]+metric[key] for key in metric.keys()}
             # update statistics (average over batch)
-            total_valid_loss.append((dis_valid_loss, gen_valid_loss, grad_valid_loss, perc_valid_loss, wass_valid_loss))
+            total_valid_loss.append((dis_valid_loss, gen_valid_loss))
             total_valid_metric.append({key:valid_metric[key]/total_valid_data for key in valid_metric.keys()})
             # save best checkpoint
             if min_valid_loss > gen_valid_loss:

@@ -30,19 +30,16 @@ def print_args(args):
         print('\n')
 
 # print model
-def print_model(model):
+def print_model(model, gen_size, dis_size):
     print('Generator:')
-    summary(model.generator, input_size=(1,2,144,144), col_names=["kernel_size", "output_size", "num_params"])
+    summary(model.generator, input_size=gen_size, col_names=["kernel_size", "output_size", "num_params"])
     print('Discriminator:')
-    summary(model.discriminator, input_size=(1,1,144,144), col_names=["kernel_size", "output_size", "num_params"])
+    summary(model.discriminator, input_size=dis_size, col_names=["kernel_size", "output_size", "num_params"])
 
 # print statistics
 def print_stat(epoch, total_train_loss, total_valid_loss, total_valid_metric, start_time):
-    print('epoch = {:<3} | train loss   | dis = {:<8.2f} | gen = {:<8.2f} | grad = {:<8.2f} | perc = {:<8.2f} | wass = {:<8.2f}'.\
-        format(epoch+1, total_train_loss[-1][0], total_train_loss[-1][1], total_train_loss[-1][2], total_train_loss[-1][3], total_train_loss[-1][4]), end="| \n")
-    print(' '*12, end="| ")
-    print('valid loss   | dis = {:<8.2f} | gen = {:<8.2f} | grad = {:<8.2f} | perc = {:<8.2f} | wass = {:<8.2f}'.\
-        format(total_valid_loss[-1][0], total_valid_loss[-1][1], total_valid_loss[-1][2], total_valid_loss[-1][3], total_valid_loss[-1][4]), end="| \n")
+    print('epoch = {:<3} | train loss   | dis = {:<8.2f} | gen = {:<8.2f} | valid loss | dis = {:<8.2f} | gen = {:<8.2f}'.\
+        format(epoch+1, total_train_loss[-1][0], total_train_loss[-1][1], total_valid_loss[-1][0], total_valid_loss[-1][1]), end="| \n")
     print(' '*12, end="| valid metric | ")
     keys = list(total_valid_metric[0].keys())
     for key in keys:
