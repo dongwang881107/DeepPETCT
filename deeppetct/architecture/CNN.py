@@ -238,8 +238,56 @@ class UNET_TMI(nn.Module):
         out = self.layer15(out)
         return out
 
-    @ classmethod
-    def compute_loss(cls):
-        return nn.MSELoss()
+# Ultra–Low-Dose 18F-Florbetaben Amyloid PET Imaging Using Deep Learning with Multi-Contrast MRI Inputs
+# 2019, Radiology
+class UNET_RADIOLOGY(nn.Module):
+    def __init__(self):
+        super(UNET_RADIOLOGY, self).__init__()
+        print('UNET_RADIOLOGY')
+        
+        self.kernel_size = 3
+        self.padding = 1
+        self.acti = 'leaky_relu'
+        self.bn_flag = True
+
+        # encoder
+        self.layer1 = conv_block('conv', 2, 16, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
+        self.layer2 = conv_block('conv', 16, 16, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
+        self.layer3 = down_sampling('maxpooling', kernel_size=2, stride=2, padding=0)
+        self.layer4 = conv_block('conv', 32, 32, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
+        self.layer5 = conv_block('conv', 32, 32, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
+        self.layer6 = down_sampling('maxpooling', kernel_size=2, stride=2, padding=0)
+        self.layer7 = conv_block('conv', 64, 64, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
+        self.layer8 = conv_block('conv', 64, 64, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
+        self.layer9 = down_sampling('maxpooling', kernel_size=2, stride=2, padding=0)
+        self.layer10 = conv_block('conv', 128, 128, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
+        self.layer11 = conv_block('conv', 128, 128, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
+        # decoder
+        self.layer12 = up_sampling(mode='interp_bilinear')
+        self.layer13 = conv_block('conv', 192, 64, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
+        self.layer14 = conv_block('conv', 64, 64, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
+        self.layer15 = up_sampling(mode='interp_bilinear')
+        self.layer16 = conv_block('conv', 96, 32, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
+        self.layer17 = conv_block('conv', 32, 32, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
+        self.layer18 = up_sampling(mode='interp_bilinear') 
+        self.layer19 = conv_block('conv', 48, 16, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
+        self.layer20 = conv_block('conv', 16, 16, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
+        self.layer21 = conv_block('conv', 16, 1, self.kernel_size, 1, self.padding, self.acti, self.bn_flag)
+
+    def forward(self, x):
+        out = self.layer2(self.layer1(x))
+        res1 = out
+        out = self.layer5(self.layer4(self.layer3(out)))
+        res2 = out
+        out = self.layer8(self.layer7(self.layer6(out)))
+        res3 = out
+        out = self.layer12(self.layer11(self.layer10(self.layer9(out))))
+        out = torch.cat([res3, out], dim=1)
+        out = self.layer15(self.layer14(self.layer13(out)))
+        out = torch.cat([res2, out], dim=1)
+        out = self.layer18(self.layer17(self.layer16(out)))
+        out = torch.cat([res1, out], dim=1)
+        out = self.layer21(self.layer20(self.layer19(out)))
+        return out
 
     

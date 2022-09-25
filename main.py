@@ -35,7 +35,7 @@ def main(args):
         print_model(model, (1,2,144,144))
     # determine loss functions
     loss_weights = [1]
-    loss_func = LossCompose([nn.MSELoss()], loss_weights)
+    loss_func = LossCompose([nn.L1Loss()], loss_weights)
     # determine metric functions
     metric_func = MetricsCompose([CompareRMSE(), ComparePSNR(), CompareSSIM()])
     # build solver
@@ -58,8 +58,8 @@ if __name__ == "__main__":
     subparser_train.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/toy')
     subparser_train.add_argument('--arch', type=str, default='unet_mp')
     subparser_train.add_argument('--batch_size', type=int, default=10, help='batch size per epoch')
-    subparser_train.add_argument('--patch_n', type=int, default=10, help='number of patches extract from one image')
-    subparser_train.add_argument('--patch_size', type=int, default=64, help='patch size')
+    subparser_train.add_argument('--patch_n', type=int, default=1, help='number of patches extract from one image')
+    subparser_train.add_argument('--patch_size', type=int, default=32, help='patch size')
     subparser_train.add_argument('--lr', type=float, default=1e-4, help='learning rate of model')
     subparser_train.add_argument('--scheduler', type=str, default='step', help='type of the scheduler')
     subparser_train.add_argument('--gamma', type=float, default=0.8, help='decay value of the learning rate')
