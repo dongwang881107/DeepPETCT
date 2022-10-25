@@ -1,19 +1,16 @@
 import torch.nn as nn
 
-class Generator(nn.Module):
+class CycleGan_generator(nn.Module):
     def __init__(self):
-        print('generator')
+        print('CycleGan_generator')
+        super(CycleGan_generator, self).__init__()
 
 
-class Discriminator(nn.Module):
+class CycleGan_discriminator(nn.Module):
     def __init__(self):
-        print('discriminator')
+        print('CycleGan_discriminator')
+        super(CycleGan_discriminator, self).__init__()
 
-# TODO: build CycleGAN network 
-# ! fdfd
-# ? fdfd
-# // fdfd sdf
-# * fdfd
 
 class CycleGAN(nn.Module):
     def __init__(self, out_ch=96, kernel_size=5, stride=1, padding=0):
