@@ -2,6 +2,7 @@ import random
 import cv2
 import numpy as np
 import torchvision.transforms.functional as TF
+import torch
 
 __all__ = [
     "TransCompose",
@@ -41,33 +42,30 @@ def segment_ct(x, y, z):
 # random vertical flip
 def vflip(x, y, z):
     if random.random() > 0.5:
-        for i in range(x.size()[0]):
-            x[i,:,:] = TF.vflip(x[i,:,:])
-            y[i,:,:] = TF.vflip(y[i,:,:])
-            z[i,:,:] = TF.vflip(z[i,:,:])
+        x = TF.vflip(x)
+        y = TF.vflip(y)
+        z = TF.vflip(z)
     return x, y, z
 
 # random horizontal flip
 def hflip(x, y, z):
     if random.random() > 0.5:
-        for i in range(x.size()[0]):
-            x[i,:,:] = TF.hflip(x[i,:,:])
-            y[i,:,:] = TF.hflip(y[i,:,:])
-            z[i,:,:] = TF.hflip(z[i,:,:])
+        x = TF.hflip(x)
+        y = TF.hflip(y)
+        z = TF.hflip(z)
     return x, y, z
 
 # rotate
 def rotate(x, y, z, angle=45):
     if random.random() > 0.5:
-        for i in range(x.size()[0]):
-            x[i,:,:] = TF.rotate(x[i,:,:], angle=angle)
-            y[i,:,:] = TF.rotate(y[i,:,:], angle=angle)
-            z[i,:,:] = TF.rotate(z[i,:,:], angle=angle)
+        x = TF.rotate(x, angle=angle)
+        y = TF.rotate(y, angle=angle)
+        z = TF.rotate(z, angle=angle)
     return x, y, z
 
 # convert numpy array into tensor
 def to_tensor(x, y, z):
-    return TF.to_tensor(x), TF.to_tensor(y), TF.to_tensor(z)
+    return torch.tensor(x), torch.tensor(y), torch.tensor(z)
 
 class ResizeCT:
     def __call__(self, x, y, z):

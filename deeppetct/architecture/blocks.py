@@ -104,4 +104,4 @@ class SelfAttenBlock(nn.Module):
         # Apply scaling factor and add residual
         out = self.gamma * out + x
 
-        return out, attention
+        return out

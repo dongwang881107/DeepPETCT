@@ -50,30 +50,30 @@ class REDCNN(nn.Module):
         # ct branch
         out_ct = self.layer_ct2(self.layer_ct1(ct))
         if self.sa_flag == True:
-            out_ct, _ = self.sa_ct(out_ct)
+            out_ct = self.sa_ct(out_ct)
         out_ct = self.layer_ct5(self.layer_ct4(self.layer_ct3(out_ct)))
         # pet branch
         out_pet = self.layer_pet2(self.layer_pet1(pet10))
         res1 = out_pet
         if self.sa_flag == True:
-            out_pet, _ = self.sa_ct(out_pet)
+            out_pet = self.sa_ct(out_pet)
         out_pet = self.layer_pet4(self.layer_pet3(out_pet))
         res2 = out_pet
         out_pet = self.layer_pet5(out_pet)
         # combine together
         out_com = torch.cat((out_pet,out_ct), dim=1)
         if self.sa_flag == True:
-            out_com, _ = self.sa_com1(out_com)
+            out_com = self.sa_com1(out_com)
         out_com = self.layer_com1(out_com)
         out_com = out_com + res2
         out_com = self.layer_com2(out_com)
         if self.sa_flag == True:
-            out_com, attention = self.sa_com2(out_com)
+            out_com = self.sa_com2(out_com)
         out_com = self.layer_com3(out_com)
         out_com = out_com + res1
         out_com = self.layer_com4(out_com)
         out_com = self.layer_com5(out_com)
-        return out_com, attention if self.sa_flag == True else out_com
+        return out_com
 
 
 class UNET_MP(nn.Module):

@@ -124,7 +124,7 @@ class Solver(object):
                 self.model.zero_grad()
                 optim.zero_grad()
                 # forward propagation
-                pred, _ = self.model(pet10, ct)
+                pred = self.model(pet10, ct)
                 # compute loss
                 loss = self.loss_func(pred, ct, pet60)
                 # backward propagation
@@ -154,7 +154,7 @@ class Solver(object):
                         ct = ct.view(-1, 1, self.patch_size, self.patch_size, self.patch_size)
                         pet60 = pet60.view(-1, 1, self.patch_size, self.patch_size, self.patch_size) 
                     # forward propagation
-                    pred, _ = self.model(pet10, ct)
+                    pred = self.model(pet10, ct)
                     # compute loss
                     loss = self.loss_func(pred, ct, pet60)
                     # compute metric
@@ -214,28 +214,26 @@ class Solver(object):
         with torch.no_grad():
             for i, (pet10,ct,pet60) in enumerate(self.dataloader):
                 # resize to (batch,feature,weight,height)
-                pet10 = pet10.view(-1, 1, 144, 144)
-                ct = ct.view(-1, 1, 144, 144)
-                pet60 = pet60.view(-1, 1, 144, 144)
+                _, _, depth, height, width = pet10.size()
+                pet10 = pet10.view(-1, 1, depth, height, width)
+                ct = ct.view(-1, 1, depth, height, width)
+                pet60 = pet60.view(-1, 1, depth, height, width)
                 # move data to device
                 pet10 = pet10.float().to(self.device)
                 ct = ct.float().to(self.device)
                 pet60 = pet60.float().to(self.device)
                 # predict
-                pred, attention = self.model(pet10, ct)
+                pred = self.model(pet10, ct)
                 pred = pred/torch.max(pred)
                 metric_x = self.metric_func(pet10, pet60)
                 metric_pred = self.metric_func(pred, pet60)
                 total_metric_x.append(metric_x)
                 total_metric_pred.append(metric_pred)
                 # save predictions
-                resizer = Resize([144,144])
                 if i == 0:
                     total_pred = pred
-                    total_attention = resizer(attention)
                 else:
                     total_pred = torch.cat((total_pred,pred),0)
-                    total_attention = torch.cat((total_attention,resizer(attention)),0)
 
         # print results
         print_metric(total_metric_x, total_metric_pred)
@@ -244,7 +242,6 @@ class Solver(object):
         # save results
         print('{:-^118s}'.format('Saving results!'))
         save_pred(total_pred.cpu(), self.save_path, self.pred_name)
-        save_pred(total_attention.cpu(), self.save_path, self.atten_name) # save attention
         save_metric((total_metric_x, total_metric_pred), self.save_path, self.metric_name)
         print('{:-^118s}'.format('Done!'))
 
