@@ -70,32 +70,38 @@ def up_sampling(mode, kernel_size, stride, padding, in_channels=None, out_channe
 
 # Self-Attention Block
 class SelfAttenBlock(nn.Module):
-    def __init__(self,in_dim):
+    def __init__(self, in_dim):
         super(SelfAttenBlock, self).__init__()
         
+        # Define the query, key, and value convolutions
         self.query_conv = nn.Conv3d(in_channels = in_dim , out_channels = in_dim//8 , kernel_size= 1)
         self.key_conv = nn.Conv3d(in_channels = in_dim , out_channels = in_dim//8 , kernel_size= 1)
         self.value_conv = nn.Conv3d(in_channels = in_dim , out_channels = in_dim , kernel_size= 1)
+
+        # Define scaler
         self.gamma = nn.Parameter(torch.zeros(1))
+
+        # Define the softmax operation
         self.softmax  = nn.Softmax(dim=-1)
     
     def forward(self, x):
-        """
-            inputs :
-                x : input feature maps(B X C X W X H)
-            returns :
-                out : self attention value + input feature 
-                attention: B X N X N (N is Width*Height)
-        """
-        batch_size, C, width, height = x.size()
-        proj_query  = self.query_conv(x).view(batch_size,-1,width*height).permute(0,2,1) # B X CX(N)
-        proj_key =  self.key_conv(x).view(batch_size,-1,width*height) # B X C x (*W*H)
-        energy =  torch.bmm(proj_query,proj_key) # transpose check
-        attention = self.softmax(energy) # BX (N) X (N) 
-        proj_value = self.value_conv(x).view(batch_size,-1,width*height) # B X C X N
+        # Get the spatial dimensions of the input tensor
+        batch_size, channels, depth, width, height = x.size()
 
-        out = torch.bmm(proj_value,attention.permute(0,2,1))
-        out = out.view(batch_size,C,width,height)
+        # Calculate the queries, keys, and values
+        query  = self.query_conv(x).view(batch_size, -1, depth*width*height).permute(0,2,1)
+        key =  self.key_conv(x).view(batch_size, -1, depth*width*height)
+        value = self.value_conv(x).view(batch_size, -1, depth*width*height)
+
+        # Calculate the attention scores
+        attention =  torch.bmm(query, key)
+        attention = self.softmax(attention) 
+
+        # Calculate the weighted sum of the values
+        out = torch.bmm(value, attention.permute(0,2,1))
+        out = out.view(batch_size, channels, depth, width, height)
         
-        out = self.gamma*out + x
+        # Apply scaling factor and add residual
+        out = self.gamma * out + x
+
         return out, attention
