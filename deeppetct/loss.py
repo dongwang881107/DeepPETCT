@@ -98,7 +98,7 @@ class SSIMLoss(nn.Module):
         mu1_sq, mu2_sq = mu1.pow(2), mu2.pow(2)
         sigma1_sq = F.conv3d(x*x, window, padding=window_size//2, groups=x.size()[1]) - mu1_sq
         sigma2_sq = F.conv3d(y*y, window, padding=window_size//2, groups=x.size()[1]) - mu2_sq
-        sigma12 = F.conv2d(x*y, window, padding=window_size//2, groups=x.size()[1]) - mu1*mu2
+        sigma12 = F.conv3d(x*y, window, padding=window_size//2, groups=x.size()[1]) - mu1*mu2
         C1, C2 = 0.01**2, 0.03**2
         ssim_map = ((2*mu1*mu2+C1)*(2*sigma12+C2)) / ((mu1_sq+mu2_sq+C1)*(sigma1_sq+sigma2_sq+C2))
         if size_average:
