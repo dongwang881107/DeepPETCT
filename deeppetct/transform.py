@@ -7,7 +7,6 @@ __all__ = [
     "TransCompose",
     "ResizeCT",
     "SegmentCT",
-    "SobelCT",
     "MyVflip",
     "MyHflip",
     "MyRotate",
@@ -25,52 +24,49 @@ def normalize(x, y, z):
 
 # resize CT 
 def resize_ct(x, y, z):
-    y = cv2.resize(y, dsize=x.shape, interpolation=cv2.INTER_LINEAR)
+    for i in range(x.shape[0]):
+        y[i,:,:] = cv2.resize(y[i,:,:], dsize=x[i,:,:].shape, interpolation=cv2.INTER_LINEAR)
     return x, y, z
 
 # segment CT
 def segment_ct(x, y, z):
-    _, mask_y = cv2.threshold(y, 0.2, 1, cv2.THRESH_BINARY)
-    _, mask_z = cv2.threshold(z, 0.01, 1, cv2.THRESH_BINARY)
-    mask = mask_y*mask_z
-    y = y*mask
+    for i in range(x.shape[0]):
+        _, mask_y = cv2.threshold(y[i,:,:], 0.2, 1, cv2.THRESH_BINARY)
+        _, mask_z = cv2.threshold(z[i,:,:], 0.01, 1, cv2.THRESH_BINARY)
+        mask = mask_y*mask_z
+        y[i,:,:] = y[i,:,:]*mask
     return x, y, z
-
-# detect boundaries in CT
-def sobel_ct(x, y, z):
-    _, mask_y = cv2.threshold(y, 0.2, 1, cv2.THRESH_BINARY)
-    _, mask_z = cv2.threshold(z, 0.01, 1, cv2.THRESH_BINARY)
-    mask = mask_y*mask_z
-    sobel_h = cv2.Sobel(y*mask,cv2.CV_64F,1,0)
-    sobel_v = cv2.Sobel(y*mask,cv2.CV_64F,0,1)
-    sobel = np.sqrt(sobel_h*sobel_h+sobel_v*sobel_v)
-    fusion = 0.5*x+0.5*sobel
-    fusion = fusion/np.max(fusion)
-    return fusion, z
 
 # random vertical flip
 def vflip(x, y, z):
     if random.random() > 0.5:
-        x = TF.vflip(x)
-        y = TF.vflip(y)
-        z = TF.vflip(z)
+        for i in range(x.size()[0]):
+            x[i,:,:] = TF.vflip(x[i,:,:])
+            y[i,:,:] = TF.vflip(y[i,:,:])
+            z[i,:,:] = TF.vflip(z[i,:,:])
     return x, y, z
 
 # random horizontal flip
 def hflip(x, y, z):
     if random.random() > 0.5:
-        x = TF.hflip(x)
-        y = TF.hflip(y)
-        z = TF.hflip(z)
+        for i in range(x.size()[0]):
+            x[i,:,:] = TF.hflip(x[i,:,:])
+            y[i,:,:] = TF.hflip(y[i,:,:])
+            z[i,:,:] = TF.hflip(z[i,:,:])
+    return x, y, z
+
+# rotate
+def rotate(x, y, z, angle=45):
+    if random.random() > 0.5:
+        for i in range(x.size()[0]):
+            x[i,:,:] = TF.rotate(x[i,:,:], angle=angle)
+            y[i,:,:] = TF.rotate(y[i,:,:], angle=angle)
+            z[i,:,:] = TF.rotate(z[i,:,:], angle=angle)
     return x, y, z
 
 # convert numpy array into tensor
 def to_tensor(x, y, z):
     return TF.to_tensor(x), TF.to_tensor(y), TF.to_tensor(z)
-
-# rotate
-def rotate(x, y, z, angle=45):
-    return TF.rotate(x, angle=angle), TF.rotate(y, angle=angle), TF.rotate(z, angle=angle)
 
 class ResizeCT:
     def __call__(self, x, y, z):
@@ -79,10 +75,6 @@ class ResizeCT:
 class SegmentCT:
     def __call__(self, x, y, z):
         return segment_ct(x, y, z)
-
-class SobelCT:
-    def __call__(self, x, y, z):
-        return sobel_ct(x, y, z)
 
 class MyVflip:
     def __call__(self, x, y, z):

@@ -12,9 +12,9 @@ class MyDataset(Dataset):
     def __init__(self, path, transform, patch_n=None, patch_size=None):
         super().__init__()
 
-        self.pet10_path = sorted(glob.glob(os.path.join(path, '*/10s/*.npy')))
-        self.ct_path = sorted(glob.glob(os.path.join(path, '*/CT/*.npy')))
-        self.pet60_path = sorted(glob.glob(os.path.join(path, '*/60s/*.npy')))
+        self.pet10_path = sorted(glob.glob(os.path.join(path, '*/10s.npy')))
+        self.ct_path = sorted(glob.glob(os.path.join(path, '*/CT.npy')))
+        self.pet60_path = sorted(glob.glob(os.path.join(path, '*/60s.npy')))
 
         self.pet10 = [np.load(f) for f in self.pet10_path]
         self.ct = [np.load(f) for f in self.ct_path]
@@ -29,6 +29,10 @@ class MyDataset(Dataset):
 
     def __getitem__(self, idx):
         pet10, ct, pet60 = self.pet10[idx], self.ct[idx], self.pet60[idx]
+        # shiftdim to depth, height, width order
+        pet10 = np.einsum('lij->jil', pet10)
+        ct = np.einsum('lij->jli', ct)
+        pet60 = np.einsum('lij->jli', pet60)
         if self.transform:
             pet10, ct, pet60 = self.transform(pet10, ct, pet60)
         if (self.patch_size!=None) & (self.patch_n!=None):
@@ -39,27 +43,30 @@ class MyDataset(Dataset):
     def get_path(self):
         return self.pet10_path, self.ct_path, self.pet60_path
 
-    # get image patches
+    # get 3D image patches
     def get_patch(self, pet10, ct, pet60):
         pet10 = torch.squeeze(pet10)
         ct = torch.squeeze(ct)
         pet60 = torch.squeeze(pet60)
-        pet10_patch = torch.Tensor(self.patch_n, self.patch_size, self.patch_size)
-        ct_patch = torch.Tensor(self.patch_n, self.patch_size, self.patch_size)
-        pet60_patch = torch.Tensor(self.patch_n, self.patch_size, self.patch_size)
-        height = pet10.size()[0]
-        weight = pet10.size()[1]
+        pet10_patch = torch.Tensor(self.patch_n, self.patch_size, self.patch_size, self.patch_size)
+        ct_patch = torch.Tensor(self.patch_n, self.patch_size, self.patch_size, self.patch_size)
+        pet60_patch = torch.Tensor(self.patch_n, self.patch_size, self.patch_size, self.patch_size)
+        depth = pet10.size()[0]
+        height = pet10.size()[1]
+        width = pet10.size()[2]
+
         i = 0
         while i < self.patch_n:
-            top = random.sample(range(height-self.patch_size),1)[0]
-            left = random.sample(range(weight-self.patch_size),1)[0]
-            pet10_p = pet10[top:top+self.patch_size, left:left+self.patch_size]
-            ct_p = ct[top:top+self.patch_size, left:left+self.patch_size]
-            pet60_p = pet60[top:top+self.patch_size, left:left+self.patch_size]
+            d_start = random.sample(range(depth-self.patch_size),1)[0]
+            h_start = random.sample(range(height-self.patch_size),1)[0]
+            w_start = random.sample(range(width-self.patch_size),1)[0]
+            pet10_p = pet10[d_start:d_start+self.patch_size, h_start:h_start+self.patch_size, w_start:w_start+self.patch_size]
+            ct_p = ct[d_start:d_start+self.patch_size, h_start:h_start+self.patch_size, w_start:w_start+self.patch_size]
+            pet60_p = pet60[d_start:d_start+self.patch_size, h_start:h_start+self.patch_size, w_start:w_start+self.patch_size]
             if torch.max(ct_p) > torch.tensor([1e-3]):
-                pet10_patch[i,:,:] = pet10_p
-                ct_patch[i,:,:] = ct_p
-                pet60_patch[i,:,:] = pet60_p
+                pet10_patch[i,:,:,:] = pet10_p
+                ct_patch[i,:,:,:] = ct_p
+                pet60_patch[i,:,:,:] = pet60_p
                 i += 1
         return pet10_patch, ct_patch, pet60_patch
 

@@ -7,7 +7,7 @@ class REDCNN(nn.Module):
     # Low-Dose CT With a Residual Encoder-Decoder Convolutional Neural Network
     # Multi-Branch Input (CT+PET)
     # Page 2526, Figure 1
-    # Conv2d (s=1) + ConvTranspose2d (s=1)
+    # Conv3d (s=1) + ConvTranspose3d (s=1)
     def __init__(self, bn_flag, sa_flag):
         super(REDCNN, self).__init__()
         print('Multi-Branch Residual Encoder Decoder CNN with Batch Normalization [{}] and Self-Attention [{}]'.format(bn_flag, sa_flag))
@@ -79,7 +79,7 @@ class REDCNN(nn.Module):
 class UNET_MP(nn.Module):
     # Ref: Anatomically aided PET image reconstruction using deep neural networks
     # Page 5, Figure 2(b)
-    # Conv2d(stride=2) + ConvTranspose2d(stride=2)
+    # Conv3d(stride=2) + ConvTranspose3d(stride=2)
     # Not working, has overlapping artifacts
     def __init__(self):
         super(UNET_MP, self).__init__()
@@ -204,7 +204,7 @@ class UNET_TMI(nn.Module):
     # 3D Auto-Context-Based Locality Adaptive Multi-Modality GANs for PET Synthesis
     # Page 1311, Figure 3
     # Generator in GAN
-    # Conv2d(stride=2) + Upsampling(factor=2)
+    # Conv3d(stride=2) + Upsampling(factor=2)
     def __init__(self):
         super(UNET_TMI, self).__init__()
         print('UNET_TMI: UNET in TMI paper')

@@ -116,9 +116,9 @@ class Solver(object):
                 pet60 = pet60.float().to(self.device)
                 # patch training/resize to (batch,feature,weight,height)
                 if (self.patch_size!=None) & (self.patch_n!=None):
-                    pet10 = pet10.view(-1, 1, self.patch_size, self.patch_size)
-                    ct = ct.view(-1, 1, self.patch_size, self.patch_size)
-                    pet60 = pet60.view(-1, 1, self.patch_size, self.patch_size)
+                    pet10 = pet10.view(-1, 1, self.patch_size, self.patch_size, self.patch_size)
+                    ct = ct.view(-1, 1, self.patch_size, self.patch_size, self.patch_size)
+                    pet60 = pet60.view(-1, 1, self.patch_size, self.patch_size, self.patch_size)
                 # zero the gradients
                 self.model.train()
                 self.model.zero_grad()
@@ -150,9 +150,9 @@ class Solver(object):
                     pet60 = pet60.float().to(self.device)
                     # patch training/resize to (batch,feature,weight,height)
                     if (self.patch_size!=None) & (self.patch_n!=None):
-                        pet10 = pet10.view(-1, 1, self.patch_size, self.patch_size)
-                        ct = ct.view(-1, 1, self.patch_size, self.patch_size)
-                        pet60 = pet60.view(-1, 1, self.patch_size, self.patch_size) 
+                        pet10 = pet10.view(-1, 1, self.patch_size, self.patch_size, self.patch_size)
+                        ct = ct.view(-1, 1, self.patch_size, self.patch_size, self.patch_size)
+                        pet60 = pet60.view(-1, 1, self.patch_size, self.patch_size, self.patch_size) 
                     # forward propagation
                     pred, _ = self.model(pet10, ct)
                     # compute loss

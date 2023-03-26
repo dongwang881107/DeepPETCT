@@ -27,8 +27,8 @@ class MetricsCompose:
 def batch_metric(x, y, name, reduction='sum'):
     metric = 0
     for i in range(x.size()[0]):
-        x_slice = x[i,0,:,:]
-        y_slice = y[i,0,:,:]
+        x_slice = x[i,0,:,:,:]
+        y_slice = y[i,0,:,:,:]
         if name == 'MSE':
             metric += compare_MSE(x_slice, y_slice)
         elif name == 'RMSE':
