@@ -24,9 +24,10 @@ def normalize(x, y, z):
 
 # resize CT 
 def resize_ct(x, y, z):
+    y_resized = np.zeros_like(x)
     for i in range(x.shape[0]):
-        y[i,:,:] = cv2.resize(y[i,:,:], dsize=x[i,:,:].shape, interpolation=cv2.INTER_LINEAR)
-    return x, y, z
+        y_resized[i,:,:] = cv2.resize(y[i,:,:], dsize=x[i,:,:].shape, interpolation=cv2.INTER_LINEAR)
+    return x, y_resized, z
 
 # segment CT
 def segment_ct(x, y, z):

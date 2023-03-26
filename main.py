@@ -34,9 +34,9 @@ def main(args):
     if args.mode == 'train':
         print_model(model)
     # determine loss functions
-    loss_weights = [1,1.2,1,1]
-    loss_modalities = ['PET','PET','PET','PET']
-    loss_func = LossCompose([MSELoss(), SSIMLoss(), raSPLoss(), PerceptualLoss()], loss_weights, loss_modalities)
+    loss_weights = [1,1.2,1]
+    loss_modalities = ['PET','PET','PET']
+    loss_func = LossCompose([MSELoss(), SSIMLoss(), raSPLoss()], loss_weights, loss_modalities)
     # determine metric functions
     metric_func = MetricsCompose([CompareRMSE(), ComparePSNR(), CompareSSIM()])
     # build solver

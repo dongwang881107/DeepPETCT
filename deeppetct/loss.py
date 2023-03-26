@@ -74,11 +74,10 @@ class L1Loss(nn.Module):
 
 class SSIMLoss(nn.Module):
     # Structure Similarity Index Measure (SSIM) Loss
-    def __init__(self, window_size=11, channel=1, size_average=True):
+    def __init__(self, window_size=11, size_average=True):
         super(SSIMLoss, self).__init__()
         self.window_size = window_size
         self.size_average = size_average
-        self.channel = channel
 
     def _gaussian(self, window_size, sigma):
         gauss = torch.Tensor([math.exp(-(x - window_size // 2) ** 2 / float(2 * sigma ** 2)) for x in range(window_size)])
@@ -86,19 +85,20 @@ class SSIMLoss(nn.Module):
 
     def _create_window(self, window_size, channel):
         _1D_window = self._gaussian(window_size, 1.5).unsqueeze(1)
-        _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
-        window = Variable(_2D_window.expand(channel, 1, window_size, window_size).contiguous())
+        _2D_window = _1D_window.mm(_1D_window.t())
+        _3D_window = _1D_window.mm(_2D_window.reshape(1, -1)).reshape(window_size, window_size, window_size).float().unsqueeze(0).unsqueeze(0)
+        window = Variable(_3D_window.expand(channel, 1, window_size, window_size, window_size).contiguous())
         return window
 
-    def _ssim(self, x, y, window_size, channel, size_average):
-        window = self._create_window(window_size, channel)
+    def _ssim(self, x, y, window_size, size_average):
+        window = self._create_window(window_size, x.size()[1])
         window = window.type_as(x)
-        mu1 = F.conv2d(x, window, padding=window_size//2)
-        mu2 = F.conv2d(y, window, padding=window_size//2)
+        mu1 = F.conv3d(x, window, padding=window_size//2, groups=x.size()[1])
+        mu2 = F.conv3d(y, window, padding=window_size//2, groups=x.size()[1])
         mu1_sq, mu2_sq = mu1.pow(2), mu2.pow(2)
-        sigma1_sq = F.conv2d(x*x, window, padding=window_size//2) - mu1_sq
-        sigma2_sq = F.conv2d(y*y, window, padding=window_size//2) - mu2_sq
-        sigma12 = F.conv2d(x*y, window, padding=window_size//2) - mu1*mu2
+        sigma1_sq = F.conv3d(x*x, window, padding=window_size//2, groups=x.size()[1]) - mu1_sq
+        sigma2_sq = F.conv3d(y*y, window, padding=window_size//2, groups=x.size()[1]) - mu2_sq
+        sigma12 = F.conv2d(x*y, window, padding=window_size//2, groups=x.size()[1]) - mu1*mu2
         C1, C2 = 0.01**2, 0.03**2
         ssim_map = ((2*mu1*mu2+C1)*(2*sigma12+C2)) / ((mu1_sq+mu2_sq+C1)*(sigma1_sq+sigma2_sq+C2))
         if size_average:
@@ -108,9 +108,9 @@ class SSIMLoss(nn.Module):
 
     def forward(self, x, y, z, modality):
         if modality == 'PET':
-            return (1-self._ssim(x, z, self.window_size, self.channel, self.size_average)).pow(2)
+            return (1-self._ssim(x, z, self.window_size, self.size_average)).pow(2)
         elif modality == 'CT':
-            return (1-self._ssim(x, y, self.window_size, self.channel, self.size_average)).pow(2)
+            return (1-self._ssim(x, y, self.window_size, self.size_average)).pow(2)
         else:
             print('Modality [PET] or [CT]')
             sys.exit(0)
@@ -287,33 +287,39 @@ class raSPLoss(nn.Module):
 
     def _compute_D(self, x, gamma=1, eta=0.1):
         # compute the anisotropic weighting D for x
-        b,c,h,w = x.size()
+        b,c,d,h,w = x.size()
         # compute grad_x
-        grad_x1 = x[:,:,1:,:]-x[:,:,:h-1,:]
-        grad_x1 = torch.cat((grad_x1,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,1,w)),2)
-        grad_x2 = x[:,:,:,1:]-x[:,:,:,:w-1]
-        grad_x2 = torch.cat((grad_x2,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,h,1)),3)
+        grad_x1 = x[:,:,1:,:,:]-x[:,:,:w-1,:,:]
+        grad_x1 = torch.cat((grad_x1,(x[:,:,1,:,:]-x[:,:,1,:,:]).view(b,c,1,h,w)),2)
+        grad_x2 = x[:,:,:,1:,:]-x[:,:,:,:h-1,:]
+        grad_x2 = torch.cat((grad_x2,(x[:,:,:,1,:]-x[:,:,:,1,:]).view(b,c,d,1,w)),3)
+        grad_x3 = x[:,:,:,:,1:]-x[:,:,:,:,:w-1]
+        grad_x3 = torch.cat((grad_x3,(x[:,:,:,:,1]-x[:,:,:,:,1]).view(b,c,d,h,1)),4)
         # compute D
-        up = gamma*(torch.pow(grad_x1,2)+torch.pow(grad_x2,2))
-        down = eta*eta+(torch.pow(grad_x1,2)+torch.pow(grad_x2,2))
+        up = gamma*(torch.pow(grad_x1,2)+torch.pow(grad_x2,2)+torch.pow(grad_x3,2))
+        down = eta*eta+(torch.pow(grad_x1,2)+torch.pow(grad_x2,2)+torch.pow(grad_x3,2))
         D = 1 - torch.div(up,down)
         return D
 
     def forward(self, x, y, z, modality):
-        b,c,h,w = x.size()
+        b,c,d,h,w = x.size()
         indicator = self._compute_D(y)
         # compute grad_x
-        grad_x1 = x[:,:,1:,:]-x[:,:,:h-1,:]
-        grad_x1 = torch.cat((grad_x1,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,1,w)),2)
-        grad_x2 = x[:,:,:,1:]-x[:,:,:,:w-1]
-        grad_x2 = torch.cat((grad_x2,(x[:,:,1,:]-x[:,:,1,:]).view(b,c,h,1)),3)
-        # compute asp loss with repect to y
-        asp_x = torch.sqrt(torch.pow(indicator*grad_x1,2)+torch.pow(indicator*grad_x2,2)+1e-8).mean()
+        grad_x1 = x[:,:,1:,:,:]-x[:,:,:w-1,:,:]
+        grad_x1 = torch.cat((grad_x1,(x[:,:,1,:,:]-x[:,:,1,:,:]).view(b,c,1,h,w)),2)
+        grad_x2 = x[:,:,:,1:,:]-x[:,:,:,:h-1,:]
+        grad_x2 = torch.cat((grad_x2,(x[:,:,:,1,:]-x[:,:,:,1,:]).view(b,c,d,1,w)),3)
+        grad_x3 = x[:,:,:,:,1:]-x[:,:,:,:,:w-1]
+        grad_x3 = torch.cat((grad_x3,(x[:,:,:,:,1]-x[:,:,:,:,1]).view(b,c,d,h,1)),4)
+        # compute asp loss of x with repect to y
+        asp_x = torch.sqrt(torch.pow(indicator*grad_x1,2)+torch.pow(indicator*grad_x2,2)+torch.pow(indicator*grad_x3,2)+1e-8).mean()
         # compute grad_z
-        grad_z1 = z[:,:,1:,:]-z[:,:,:h-1,:]
-        grad_z1 = torch.cat((grad_z1,(z[:,:,1,:]-z[:,:,1,:]).view(b,c,1,w)),2)
-        grad_z2 = z[:,:,:,1:]-z[:,:,:,:w-1]
-        grad_z2 = torch.cat((grad_z2,(z[:,:,1,:]-z[:,:,1,:]).view(b,c,h,1)),3)
-        # compute isp loss with repect to y
-        asp_z = torch.sqrt(torch.pow(indicator*grad_z1,2)+torch.pow(indicator*grad_z2,2)+1e-8).mean()
+        grad_z1 = z[:,:,1:,:,:]-z[:,:,:w-1,:,:]
+        grad_z1 = torch.cat((grad_z1,(z[:,:,1,:,:]-z[:,:,1,:,:]).view(b,c,1,h,w)),2)
+        grad_z2 = z[:,:,:,1:,:]-z[:,:,:,:h-1,:]
+        grad_z2 = torch.cat((grad_z2,(z[:,:,:,1,:]-z[:,:,:,1,:]).view(b,c,d,1,w)),3)
+        grad_z3 = z[:,:,:,:,1:]-z[:,:,:,:,:w-1]
+        grad_z3 = torch.cat((grad_z3,(z[:,:,:,:,1]-z[:,:,:,:,1]).view(b,c,d,h,1)),4)
+        # compute asp loss of z with repect to y
+        asp_z = torch.sqrt(torch.pow(indicator*grad_z1,2)+torch.pow(indicator*grad_z2,2)+torch.pow(indicator*grad_z3,2)+1e-8).mean()
         return torch.pow(asp_x-asp_z,2)
