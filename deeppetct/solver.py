@@ -205,7 +205,7 @@ class Solver(object):
         self.model.eval()
         with torch.no_grad():
             for i, (x,y) in enumerate(self.dataloader):
-                _, depth, height, width = x.size()
+                _, _, depth, height, width = x.size()
                 # resize to (batch,feature,weight,height)
                 x = x.view(-1, 2, depth, height, width)
                 y = y.view(-1, 1, depth, height, width)
@@ -213,12 +213,15 @@ class Solver(object):
                 x = x.float().to(self.device)
                 y = y.float().to(self.device)
                 # predict
-                pred = torch.zeros_like(y)
-                for i in range(depth // self.num_slices):
-                    start_idx = i*self.num_slices
-                    end_idx = i*self.num_slices + self.num_slices
-                    pred[:,:,start_idx:end_idx,:,:] =\
-                          self.model(x[:,:,start_idx:end_idx,:,:])
+                if self.num_slices >= depth:
+                    pred = self.model(x)
+                else:   
+                    pred = torch.zeros_like(y)
+                    for i in range(depth // self.num_slices):
+                        start_idx = i*self.num_slices
+                        end_idx = i*self.num_slices + self.num_slices
+                        pred[:,:,start_idx:end_idx,:,:] =\
+                            self.model(x[:,:,start_idx:end_idx,:,:])
                 pred = pred/torch.max(pred)
                 metric_x = self.metric_func(x, y)
                 metric_pred = self.metric_func(pred, y)
@@ -228,7 +231,7 @@ class Solver(object):
                 if i == 0:
                     total_pred = pred
                 else:
-                    total_pred = torch.cat((total_pred,pred),0)
+                    total_pred = torch.cat((total_pred,pred),2)
 
         # print results
         print_metric(total_metric_x, total_metric_pred)

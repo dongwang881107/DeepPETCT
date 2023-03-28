@@ -76,7 +76,7 @@ if __name__ == "__main__":
     subparser_test.add_argument('--save_path', type=str, default='./test', help='saved path of the results')
     subparser_test.add_argument('--device_idx', nargs='+', type=int, default=[], help='gpu numbers')
     subparser_test.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/toy')
-    subparser_test.add_argument('--arch', type=str, default='unet_ra')
+    subparser_test.add_argument('--arch', type=str, default='unet_mp')
     subparser_test.add_argument('--num_workers', type=int, default=4, help='number of workers used')
     subparser_test.add_argument('--num_slices', type=int, default=10, help='number of slices per reconstruction')
     subparser_test.add_argument('--checkpoint', type=str, default='checkpoint_final', help='name of the checkpoint')
