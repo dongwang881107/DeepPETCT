@@ -80,7 +80,6 @@ class UNET_MP(nn.Module):
     # Ref: Anatomically aided PET image reconstruction using deep neural networks
     # Page 5, Figure 2(b)
     # Conv3d(stride=2) + ConvTranspose3d(stride=2)
-    # Not working, has overlapping artifacts
     def __init__(self):
         super(UNET_MP, self).__init__()
         print('UNET_MP: UNET in MP paper')

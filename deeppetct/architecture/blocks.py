@@ -94,7 +94,7 @@ class SelfAttenBlock(nn.Module):
         value = self.value_conv(x).view(batch_size, -1, depth*width*height)
 
         # Calculate the attention scores
-        attention =  torch.bmm(query, key)
+        attention =  torch.bmm(query, key) #! easy to get out of memory problem
         attention = self.softmax(attention) 
 
         # Calculate the weighted sum of the values
