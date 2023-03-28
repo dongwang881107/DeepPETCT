@@ -111,10 +111,6 @@ class UNET_MP(nn.Module):
         out = self.layer16(out)
         return out
 
-    @ classmethod
-    def compute_loss(cls):
-        return nn.MSELoss()
-
 class UNET_MIA(nn.Module):
     # Ref: Towards lower-dose PET using physics-based uncertainty-aware 
     # multimodal learning with robustness to out-of-distribution data

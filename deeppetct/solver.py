@@ -110,8 +110,8 @@ class Solver(object):
                 y = y.float().to(self.device)
                 # patch training/resize to (batch,feature,weight,height)
                 if (self.patch_size!=None) & (self.patch_n!=None):
-                    x = x.view(-1, 2, self.patch_size, self.patch_size)
-                    y = y.view(-1, 1, self.patch_size, self.patch_size)
+                    x = x.view(-1, 2, self.patch_size, self.patch_size, self.patch_size)
+                    y = y.view(-1, 1, self.patch_size, self.patch_size, self.patch_size)
                 # zero the gradients
                 self.model.train()
                 self.model.zero_grad()
@@ -142,8 +142,8 @@ class Solver(object):
                     y = y.float().to(self.device)
                     # patch training/resize to (batch,feature,weight,height)
                     if (self.patch_size!=None) & (self.patch_n!=None):
-                        x = x.view(-1, 2, self.patch_size, self.patch_size)
-                        y = y.view(-1, 1, self.patch_size, self.patch_size) 
+                        x = x.view(-1, 2, self.patch_size, self.patch_size, self.patch_size)
+                        y = y.view(-1, 1, self.patch_size, self.patch_size, self.patch_size) 
                     # forward propagation
                     pred = self.model(x)
                     # compute loss
@@ -204,9 +204,10 @@ class Solver(object):
         self.model.eval()
         with torch.no_grad():
             for i, (x,y) in enumerate(self.dataloader):
+                _, _, depth, height, width = x.size()
                 # resize to (batch,feature,weight,height)
-                x = x.view(-1, 2, 144, 144)
-                y = y.view(-1, 1, 144, 144)
+                x = x.view(-1, 2, depth, height, width)
+                y = y.view(-1, 1, depth, height, width)
                 # move data to device
                 x = x.float().to(self.device)
                 y = y.float().to(self.device)

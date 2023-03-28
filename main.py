@@ -32,10 +32,11 @@ def main(args):
     # determine neural networks
     model = eval('deeparch.{}()'.format(args.arch))
     if args.mode == 'train':
-        print_model(model, (1,2,144,144))
+        print_model(model, (1,2,144,144,240))
     # determine loss functions
     loss_weights = [1]
-    loss_func = LossCompose([nn.L1Loss()], loss_weights)
+    loss_modalities = ['PET']
+    loss_func = LossCompose([nn.MSELoss()], loss_weights, loss_modalities)
     # determine metric functions
     metric_func = MetricsCompose([CompareRMSE(), ComparePSNR(), CompareSSIM()])
     # build solver
@@ -52,17 +53,17 @@ if __name__ == "__main__":
     subparser_train = subparsers.add_parser('train', help='training mode')
     subparser_train.add_argument('--seed', type=int, default=1000, help='random seed')
     subparser_train.add_argument('--device_idx', nargs='+', type=int, default=[], help='gpu numbers')
-    subparser_train.add_argument('--save_path', type=str, default='./test', help='saved path of the results')
+    subparser_train.add_argument('--save_path', type=str, default='./result_3d', help='saved path of the results')
     subparser_train.add_argument('--num_workers', type=int, default=0, help='number of workers used')
     subparser_train.add_argument('--log_name', type=str, default='log', help='name of the log file')
     subparser_train.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/toy')
-    subparser_train.add_argument('--arch', type=str, default='unet_ra')
-    subparser_train.add_argument('--batch_size', type=int, default=10, help='batch size per epoch')
-    subparser_train.add_argument('--patch_n', type=int, default=1, help='number of patches extract from one image')
+    subparser_train.add_argument('--arch', type=str, default='unet_mp')
+    subparser_train.add_argument('--batch_size', type=int, default=1, help='batch size per epoch')
+    subparser_train.add_argument('--patch_n', type=int, default=10, help='number of patches extract from one image')
     subparser_train.add_argument('--patch_size', type=int, default=32, help='patch size')
-    subparser_train.add_argument('--lr', type=float, default=1e-4, help='learning rate of model')
+    subparser_train.add_argument('--lr', type=float, default=5e-4, help='learning rate of model')
     subparser_train.add_argument('--scheduler', type=str, default='step', help='type of the scheduler')
-    subparser_train.add_argument('--gamma', type=float, default=0.8, help='decay value of the learning rate')
+    subparser_train.add_argument('--gamma', type=float, default=1, help='decay value of the learning rate')
     subparser_train.add_argument('--num_epochs', type=int, default=100, help='number of epochs')
     subparser_train.add_argument('--decay_iters', type=int, default=10, help='number of iterations to decay learning rate')
     subparser_train.add_argument('--save_iters', type=int, default=50, help='number of iterations to save models')
