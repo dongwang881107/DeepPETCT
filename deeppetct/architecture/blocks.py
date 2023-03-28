@@ -6,41 +6,45 @@ import sys
 def get_acti(acti):
     return nn.ModuleDict([
         ['relu', nn.ReLU()],
-        ['leaky_relu', nn.LeakyReLU(negative_slope=0.2)],
+        ['leaky_relu', nn.LeakyReLU(negative_slope=0.01)],
     ])[acti]
 
 # initialize model
 def weights_init(m):
+    # in PyTorch
+    # default init for Conv3d: kaiming_uniform_ (uniform sample in (-bound, bound))
+    # default init for Linear: kaiming_uniform_ (uniform sample in (-bound, bound))
+    # default init for BatchNorm3d: weight (uniform sample in (-bound, bound))/bias (0)
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
-        nn.init.kaiming_normal_(m.weight, mode='fan_in')
-    elif classname.find('BatchNorm2d') != -1:
-        nn.init.constant_(m.weight, 1)
-        nn.init.constant_(m.bias, 0)
+        nn.init.kaiming_normal_(m.weight.data, mode='fan_in', nonlinearity='relu')
+    elif classname.find('BatchNorm3d') != -1:
+        nn.init.constant_(m.weight.data, 1)
+        nn.init.constant_(m.bias.data, 0)
     elif classname.find('Linear') != -1:
-        nn.init.kaiming_normal_(m.weight, mode='fan_in')
+        nn.init.kaiming_normal_(m.weight.data, mode='fan_in')
 
 # convolution block: conv-[bn]-acti
 def conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti, bn_flag=False):
     if mode == 'conv':
-        conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding)
+        conv = nn.Conv3d(in_channels, out_channels, kernel_size, stride, padding)
     elif mode == 'trans':
-        conv = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding, output_padding=1 if stride>1 else 0)
+        conv = nn.ConvTranspose3d(in_channels, out_channels, kernel_size, stride, padding, output_padding=1)
     else:
         print('[conv] | [trans]')
         sys.exit(0)
     if bn_flag == True:
-        bn = nn.BatchNorm2d(out_channels)
+        bn = nn.BatchNorm3d(out_channels)
     acti = get_acti(acti)
     layers = [conv,bn,acti] if bn_flag == True else [conv,acti]
     return nn.Sequential(*layers)
 
 # down sampling block
-def down_sampling(mode, kernel_size, stride, padding, in_channels=None, out_channels=None, acti=None, bn_flag=False):
+def down_sampling(mode, kernel_size, stride, padding, in_channels=None, out_channels=None, acti=None):
     if mode == 'conv':
-        down = conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti, bn_flag)
+        down = conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti)
     elif mode =='maxpooling':
-        down = nn.MaxPool2d(kernel_size, stride, padding)
+        down = nn.MaxPool3d(kernel_size, stride, padding)
     else:
         print('[conv] | [maxpooling]')
         sys.exit(0)
@@ -48,9 +52,9 @@ def down_sampling(mode, kernel_size, stride, padding, in_channels=None, out_chan
     return nn.Sequential(*layers)
 
 # up sampling block
-def up_sampling(mode, kernel_size=None, stride=None, padding=None, in_channels=None, out_channels=None, acti=None, bn_flag=False):
+def up_sampling(mode, kernel_size, stride, padding, in_channels=None, out_channels=None, acti=None):
     if mode == 'trans':
-        up = conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti, bn_flag)
+        up = conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti)
     elif mode == 'interp_nearest':
         up = nn.Upsample(scale_factor=2, mode='nearest')
     elif mode =='interp_bilinear':

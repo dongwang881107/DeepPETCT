@@ -197,7 +197,7 @@ class GAN_TMI_discriminator(nn.Module):
         return out
 
 # 3D Auto-Context-Based Locality Adaptive Multi-Modality GANs for PET Synthesis
-# 2019, Medical Physics
+# 2019, IEEE Transactions on Medical Imaging
 class GAN_TMI(nn.Module):
     def __init__(self, patch_size, lambda1):
         super(GAN_TMI, self).__init__()

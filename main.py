@@ -32,9 +32,9 @@ def main(args):
     model = deeparch.gan_tmi(args.patch_size, args.lambda1)
     # model = deeparch.wganvgg(args.patch_size, args.lambda1, args.lambda2)
     if args.mode == 'train':
-        print_model(model, (1,2,144,144), (1,1,64,64))
+        print_model(model, (1,2,144,144,144), (1,1,64,64,64))
     # determine metric functions
-    metric_func = MetricsCompose([ComputeRMSE(), ComputePSNR(), ComputeSSIM()])
+    metric_func = MetricsCompose([CompareRMSE(), ComparePSNR(), CompareSSIM()])
     # build solver
     solver = Solver(dataloader, model, metric_func, args)    
 
@@ -49,13 +49,13 @@ if __name__ == "__main__":
     subparser_train = subparsers.add_parser('train', help='training mode')
     subparser_train.add_argument('--seed', type=int, default=1000, help='random seed')
     subparser_train.add_argument('--device_idx', nargs='+', type=int, default=[], help='gpu numbers')
-    subparser_train.add_argument('--save_path', type=str, default='./gan/test', help='saved path of the results')
+    subparser_train.add_argument('--save_path', type=str, default='./result_3d', help='saved path of the results')
     subparser_train.add_argument('--num_workers', type=int, default=0, help='number of workers used')
     subparser_train.add_argument('--log_name', type=str, default='log', help='name of the log file')
     subparser_train.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/toy')
-    subparser_train.add_argument('--batch_size', type=int, default=10, help='batch size per epoch')
+    subparser_train.add_argument('--batch_size', type=int, default=1, help='batch size per epoch')
     subparser_train.add_argument('--patch_n', type=int, default=10, help='number of patches extract from one image')
-    subparser_train.add_argument('--patch_size', type=int, default=64, help='patch size')
+    subparser_train.add_argument('--patch_size', type=int, default=32, help='patch size')
     subparser_train.add_argument('--lr', type=float, default=1e-4, help='learning rate of model')
     subparser_train.add_argument('--lambda1', type=float, default=1e-1, help='parameter in generator loss')
     subparser_train.add_argument('--lambda2', type=float, default=1e1, help='parameter in discriminator loss')

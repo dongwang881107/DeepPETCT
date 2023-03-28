@@ -5,56 +5,64 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 __all__ = [
-    "ComputeMSE",
-    "ComputeRMSE",
-    "ComputePSNR",
-    "ComputeSSIM",
+    "CompareMSE",
+    "CompareRMSE",
+    "ComparePSNR",
+    "CompareSSIM",
     "MetricsCompose",
 ]
 
-# compute metrics for all batches
+# compose metric functions together
+class MetricsCompose:
+    def __init__(self, metrics):
+        self.metrics = metrics
+
+    def __call__(self, x, y, batch=True):
+        metrics = {}
+        for m in self.metrics:
+            metrics = dict(metrics, **m(x,y,batch=batch))
+        return metrics
+
+# compare metrics for all batches
 def batch_metric(x, y, name, reduction='sum'):
     metric = 0
     for i in range(x.size()[0]):
-        x_slice = x[i,0,:,:]
-        y_slice = y[i,0,:,:]
+        x_slice = x[i,0,:,:,:]
+        y_slice = y[i,0,:,:,:]
         if name == 'MSE':
-            metric += compute_MSE(x_slice, y_slice)
+            metric += compare_MSE(x_slice, y_slice)
         elif name == 'RMSE':
-            metric += compute_RMSE(x_slice, y_slice)
+            metric += compare_RMSE(x_slice, y_slice)
         elif name == 'PSNR':
-            metric += compute_PSNR(x_slice, y_slice)
+            metric += compare_PSNR(x_slice, y_slice)
         elif name == 'SSIM':
             x_slice = x_slice.unsqueeze(0).unsqueeze(0)
             y_slice = y_slice.unsqueeze(0).unsqueeze(0)
-            metric += compute_SSIM(x_slice, y_slice)
+            metric += compare_SSIM(x_slice, y_slice)
         else:
             print('MSE | RMSE | PSNR | SSIM')
             sys.exit(0)
     return metric if reduction == 'sum' else metric/x.size()[0]
 
-def compute_MSE(x, y):
+def compare_MSE(x, y):
     return ((x-y)**2).mean()
 
-def compute_RMSE(x, y):
-    return torch.sqrt(compute_MSE(x,y)).item()
+def compare_RMSE(x, y):
+    return torch.sqrt(compare_MSE(x,y)).item()
 
-def compute_PSNR(x, y):
-    return 10*torch.log10((1.**2)/compute_MSE(x,y)).item()
+def compare_PSNR(x, y):
+    return 10*torch.log10((1.**2)/compare_MSE(x,y)).item()
 
-def compute_SSIM(x, y):
-    window_size = 11
-    channel = 1
-    size_average=True
-    window = _create_window(window_size, channel)
+def compare_SSIM(x, y, window_size=11, size_average=True):
+    window = _create_window(window_size, x.size()[1])
     window = window.type_as(x)
-    mu1 = F.conv2d(x, window, padding=window_size//2)
-    mu2 = F.conv2d(y, window, padding=window_size//2)
+    mu1 = F.conv3d(x, window, padding=window_size//2, groups=x.size()[1])
+    mu2 = F.conv3d(y, window, padding=window_size//2, groups=x.size()[1])
     mu1_sq, mu2_sq = mu1.pow(2), mu2.pow(2)
 
-    sigma1_sq = F.conv2d(x*x, window, padding=window_size//2) - mu1_sq
-    sigma2_sq = F.conv2d(y*y, window, padding=window_size//2) - mu2_sq
-    sigma12 = F.conv2d(x*y, window, padding=window_size//2) - mu1*mu2
+    sigma1_sq = F.conv3d(x*x, window, padding=window_size//2, groups=x.size()[1]) - mu1_sq
+    sigma2_sq = F.conv3d(y*y, window, padding=window_size//2, groups=x.size()[1]) - mu2_sq
+    sigma12 = F.conv3d(x*y, window, padding=window_size//2, groups=x.size()[1]) - mu1*mu2
 
     C1, C2 = 0.01**2, 0.03**2
 
@@ -70,32 +78,23 @@ def _gaussian(window_size, sigma):
 
 def _create_window(window_size, channel):
     _1D_window = _gaussian(window_size, 1.5).unsqueeze(1)
-    _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
-    window = Variable(_2D_window.expand(channel, 1, window_size, window_size).contiguous())
+    _2D_window = _1D_window.mm(_1D_window.t())
+    _3D_window = _1D_window.mm(_2D_window.reshape(1, -1)).reshape(window_size, window_size, window_size).float().unsqueeze(0).unsqueeze(0)
+    window = Variable(_3D_window.expand(channel, 1, window_size, window_size, window_size).contiguous())
     return window
 
-class ComputeMSE:
+class CompareMSE:
     def __call__(self, x, y, batch=True):
-        return {'MSE':batch_metric(x,y,'MSE')} if batch else {'MSE':compute_MSE(x,y)}
+        return {'MSE':batch_metric(x,y,'MSE')} if batch else {'MSE':compare_MSE(x,y)}
 
-class ComputeRMSE:
+class CompareRMSE:
     def __call__(self, x, y, batch=True):
-        return {'RMSE':batch_metric(x,y,'RMSE')} if batch else {'RMSE':compute_RMSE(x,y)}
+        return {'RMSE':batch_metric(x,y,'RMSE')} if batch else {'RMSE':compare_RMSE(x,y)}
 
-class ComputePSNR:
+class ComparePSNR:
     def __call__(self, x, y, batch=True):
-        return {'PSNR':batch_metric(x,y,'PSNR')} if batch else {'PSNR':compute_PSNR(x,y)}
+        return {'PSNR':batch_metric(x,y,'PSNR')} if batch else {'PSNR':compare_PSNR(x,y)}
 
-class ComputeSSIM:
+class CompareSSIM:
     def __call__(self, x, y, batch=True):
-        return {'SSIM':batch_metric(x,y,'SSIM')} if batch else {'SSIM':compute_SSIM(x,y)}
-
-class MetricsCompose:
-    def __init__(self, metrics):
-        self.metrics = metrics
-
-    def __call__(self, x, y, batch=True):
-        metrics = {}
-        for m in self.metrics:
-            metrics = dict(metrics, **m(x,y,batch=batch))
-        return metrics
+        return {'SSIM':batch_metric(x,y,'SSIM')} if batch else {'SSIM':compare_SSIM(x,y)}
