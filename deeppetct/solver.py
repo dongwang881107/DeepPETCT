@@ -40,6 +40,7 @@ class Solver(object):
         elif self.mode == 'test':
             # load teseting parameters
             self.device_idx = args.device_idx
+            self.num_slices = args.num_slices
             self.metric_func = metric_func
             self.metric_name = args.metric_name
             self.pred_name = args.pred_name
@@ -255,8 +256,13 @@ class Solver(object):
                 x = x.float().to(self.device)
                 real = real.float().to(self.device)
                 # predict
-                fake = self.model.generator(x)
-                # fake = fake/torch.max(fake)
+                fake = torch.zeros_like(real)
+                for i in range(depth // self.num_slices):
+                    start_idx = i*self.num_slices
+                    end_idx = i*self.num_slices + self.num_slices
+                    fake[:,:,start_idx:end_idx,:,:] =\
+                          self.model.generator(x[:,:,start_idx:end_idx,:,:])
+                fake = fake/torch.max(fake)
                 metric_x = self.metric_func(x, real)
                 metric_pred = self.metric_func(fake, real)
                 total_metric_x.append(metric_x)

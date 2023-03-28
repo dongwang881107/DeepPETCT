@@ -76,6 +76,7 @@ if __name__ == "__main__":
     subparser_test.add_argument('--lambda1', type=float, default=1e-1, help='parameter in generator loss')
     subparser_test.add_argument('--lambda2', type=float, default=1e-1, help='parameter in generator loss')
     subparser_test.add_argument('--num_workers', type=int, default=4, help='number of workers used')
+    subparser_test.add_argument('--num_slices', type=int, default=10, help='number of slices per reconstruction')
     subparser_test.add_argument('--patch_size', type=int, default=144, help='patch size')
     subparser_test.add_argument('--checkpoint', type=str, default='checkpoint_best', help='name of the checkpoint')
     subparser_test.add_argument('--log_name', type=str, default='log', help='name of the log file')
