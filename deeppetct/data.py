@@ -53,8 +53,8 @@ class MyDataset(Dataset):
         pet10 = torch.squeeze(pet10)
         ct = torch.squeeze(ct)
         pet60 = torch.squeeze(pet60)
-        pet10ct_patch = torch.Tensor(self.patch_n, 2, self.patch_size, self.patch_size)
-        pet60_patch = torch.Tensor(self.patch_n, self.patch_size, self.patch_size)
+        pet10ct_patch = torch.Tensor(self.patch_n, 2, self.patch_size, self.patch_size, self.patch_size)
+        pet60_patch = torch.Tensor(self.patch_n, self.patch_size, self.patch_size, self.patch_size)
         depth = pet10.size()[0]
         height = pet10.size()[1]
         width = pet10.size()[2]
@@ -68,9 +68,9 @@ class MyDataset(Dataset):
             ct_p = ct[d_start:d_start+self.patch_size, h_start:h_start+self.patch_size, w_start:w_start+self.patch_size]
             pet60_p = pet60[d_start:d_start+self.patch_size, h_start:h_start+self.patch_size, w_start:w_start+self.patch_size]
             if torch.max(ct_p) > torch.tensor([1e-3]):
-                pet10ct_patch[i,0,:,:] = pet10_p
-                pet10ct_patch[i,1,:,:] = ct_p
-                pet60_patch[i,:,:] = pet60_p
+                pet10ct_patch[i,0,:,:,:] = pet10_p
+                pet10ct_patch[i,1,:,:,:] = ct_p
+                pet60_patch[i,:,:,:] = pet60_p
                 i += 1
         return pet10ct_patch, pet60_patch
 

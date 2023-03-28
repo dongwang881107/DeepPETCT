@@ -30,7 +30,7 @@ def conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, ac
     if mode == 'conv':
         conv = nn.Conv3d(in_channels, out_channels, kernel_size, stride, padding)
     elif mode == 'trans':
-        conv = nn.ConvTranspose3d(in_channels, out_channels, kernel_size, stride, padding)
+        conv = nn.ConvTranspose3d(in_channels, out_channels, kernel_size, stride, padding, output_padding=1)
     else:
         print('[conv] | [trans]')
         sys.exit(0)

@@ -35,8 +35,7 @@ def main(args):
         print_model(model, (1,2,144,144,240))
     # determine loss functions
     loss_weights = [1]
-    loss_modalities = ['PET']
-    loss_func = LossCompose([nn.MSELoss()], loss_weights, loss_modalities)
+    loss_func = LossCompose([nn.MSELoss()], loss_weights)
     # determine metric functions
     metric_func = MetricsCompose([CompareRMSE(), ComparePSNR(), CompareSSIM()])
     # build solver
