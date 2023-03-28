@@ -40,6 +40,7 @@ class Solver(object):
         elif self.mode == 'test':
             # load teseting parameters
             self.device_idx = args.device_idx
+            self.num_slices = args.num_slices
             self.metric_func = metric_func
             self.metric_name = args.metric_name
             self.pred_name = args.pred_name
@@ -204,7 +205,7 @@ class Solver(object):
         self.model.eval()
         with torch.no_grad():
             for i, (x,y) in enumerate(self.dataloader):
-                _, _, depth, height, width = x.size()
+                _, depth, height, width = x.size()
                 # resize to (batch,feature,weight,height)
                 x = x.view(-1, 2, depth, height, width)
                 y = y.view(-1, 1, depth, height, width)
@@ -212,7 +213,12 @@ class Solver(object):
                 x = x.float().to(self.device)
                 y = y.float().to(self.device)
                 # predict
-                pred = self.model(x)
+                pred = torch.zeros_like(y)
+                for i in range(depth // self.num_slices):
+                    start_idx = i*self.num_slices
+                    end_idx = i*self.num_slices + self.num_slices
+                    pred[:,:,start_idx:end_idx,:,:] =\
+                          self.model(x[:,:,start_idx:end_idx,:,:])
                 pred = pred/torch.max(pred)
                 metric_x = self.metric_func(x, y)
                 metric_pred = self.metric_func(pred, y)
