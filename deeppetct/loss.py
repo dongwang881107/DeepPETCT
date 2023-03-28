@@ -24,53 +24,40 @@ __all__ = [
 
 # compose loss functions together
 class LossCompose:
-    def __init__(self, losses, params, modalities):
+    def __init__(self, losses, params):
         self.losses = losses
         self.params = params
-        self.modalities = modalities
         self.print_loss()
 
     def print_loss(self):
         print('Loss functions are', end=' ')
-        for i, loss in enumerate(self.losses):
-            print('[{} ({})]'.format(loss.__class__.__name__, self.modalities[i]), end=' ')
+        for loss in self.losses:
+            print('[{}]'.format(loss.__class__.__name__), end=' ')
         print('\n')
 
-    def __call__(self, x, y, z):
-        # x->pet10, y->ct, z->pet60
+    def __call__(self, x, y):
+        # x->pet10, y->pet60
         assert(len(self.losses) == len(self.params))
         losses = 0
         for i, loss in enumerate(self.losses):
-            losses = losses + self.params[i]*loss(x,y,z,self.modalities[i])
+            losses = losses + self.params[i]*loss(x,y)
         return losses
 
 class MSELoss(nn.Module):
     def __init__(self):
         super(MSELoss, self).__init__()
 
-    def forward(self, x, y, z, modality):
+    def forward(self, x, y):
         loss = nn.MSELoss()
-        if modality == 'PET':
-            return loss(x,z)
-        elif modality == 'CT':
-            return loss(x,y)
-        else:
-            print('Modality [PET] or [CT]')
-            sys.exit(0)
+        return loss(x,y)
 
 class L1Loss(nn.Module):
     def __init__(self):
         super(L1Loss, self).__init__()
 
-    def forward(self, x, y, z, modality):
+    def forward(self, x, y):
         loss = nn.L1Loss()
-        if modality == 'PET':
-            return loss(x,z)
-        elif modality == 'CT':
-            return loss(x,y)
-        else:
-            print('Modality [PET] or [CT]')
-            sys.exit(0)
+        return loss(x,y)
 
 class SSIMLoss(nn.Module):
     # Structure Similarity Index Measure (SSIM) Loss
@@ -106,14 +93,8 @@ class SSIMLoss(nn.Module):
         else:
             return ssim_map.mean(1).mean(1).mean(1)
 
-    def forward(self, x, y, z, modality):
-        if modality == 'PET':
-            return (1-self._ssim(x, z, self.window_size, self.size_average)).pow(2)
-        elif modality == 'CT':
-            return (1-self._ssim(x, y, self.window_size, self.size_average)).pow(2)
-        else:
-            print('Modality [PET] or [CT]')
-            sys.exit(0)
+    def forward(self, x, y):
+        return (1-self._ssim(x, y, self.window_size, self.size_average)).pow(2)
 
 class PerceptualLoss(nn.Module):
     def __init__(self):
