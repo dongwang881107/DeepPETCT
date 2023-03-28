@@ -41,6 +41,7 @@ class Solver(object):
         elif self.mode == 'test':
             # load teseting parameters
             self.device_idx = args.device_idx
+            self.num_slices = args.num_slices
             self.metric_func = metric_func
             self.metric_name = args.metric_name
             self.pred_name = args.pred_name
@@ -214,7 +215,7 @@ class Solver(object):
         with torch.no_grad():
             for i, (pet10,ct,pet60) in enumerate(self.dataloader):
                 # resize to (batch,feature,weight,height)
-                _, _, depth, height, width = pet10.size()
+                _, depth, height, width = pet10.size()
                 pet10 = pet10.view(-1, 1, depth, height, width)
                 ct = ct.view(-1, 1, depth, height, width)
                 pet60 = pet60.view(-1, 1, depth, height, width)
@@ -223,7 +224,12 @@ class Solver(object):
                 ct = ct.float().to(self.device)
                 pet60 = pet60.float().to(self.device)
                 # predict
-                pred = self.model(pet10, ct)
+                pred = torch.zeros_like(pet60)
+                for i in range(depth // self.num_slices):
+                    start_idx = i*self.num_slices
+                    end_idx = i*self.num_slices + self.num_slices
+                    pred[:,:,start_idx:end_idx,:,:] =\
+                          self.model(pet10[:,:,start_idx:end_idx,:,:], ct[:,:,start_idx:end_idx,:,:])
                 pred = pred/torch.max(pred)
                 metric_x = self.metric_func(pet10, pet60)
                 metric_pred = self.metric_func(pred, pet60)
