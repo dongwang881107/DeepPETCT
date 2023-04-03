@@ -248,7 +248,7 @@ class Solver(object):
         with torch.no_grad():
             for i, (x,real) in enumerate(self.dataloader):
                 # resize to (batch,feature,weight,height)
-                _, depth, height, width = x.size()
+                _, _, depth, height, width = x.size()
                 # resize to (batch,feature,weight,height)
                 x = x.view(-1, 2, depth, height, width)
                 real = real.view(-1, 1, depth, height, width)
