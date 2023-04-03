@@ -30,7 +30,7 @@ def main(args):
                             patch_n=args.patch_n if args.mode=='train' else None, 
                             patch_size=args.patch_size if args.mode=='train' else None)
     # determine neural networks
-    model = deeparch.redcnn(bn_flag=True, sa_flag=True)
+    model = deeparch.redcnn(bn_flag=True, sa_flag=True, sa_mode='local')
     if args.mode == 'train':
         print_model(model)
     # determine loss functions
