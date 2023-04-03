@@ -25,7 +25,7 @@ def weights_init(m):
         nn.init.kaiming_normal_(m.weight.data, mode='fan_in')
 
 # convolution block: conv-[bn]-acti
-def conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti, bn_flag=False):
+def conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti, bn_flag=True):
     if mode == 'conv':
         conv = nn.Conv3d(in_channels, out_channels, kernel_size, stride, padding)
     elif mode == 'trans':
@@ -40,7 +40,7 @@ def conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, ac
     return nn.Sequential(*layers)
 
 # down sampling block
-def down_sampling(mode, kernel_size, stride, padding, in_channels=None, out_channels=None, acti=None):
+def down_sampling(mode, kernel_size, stride, padding, in_channels=None, out_channels=None, acti=None, bn_flag=True):
     if mode == 'conv':
         down = conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti)
     elif mode =='maxpooling':
@@ -52,17 +52,13 @@ def down_sampling(mode, kernel_size, stride, padding, in_channels=None, out_chan
     return nn.Sequential(*layers)
 
 # up sampling block
-def up_sampling(mode, kernel_size, stride, padding, in_channels=None, out_channels=None, acti=None):
+def up_sampling(mode, kernel_size, stride, padding, in_channels=None, out_channels=None, acti=None, bn_flag=True):
     if mode == 'trans':
         up = conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti)
-    elif mode == 'interp_nearest':
-        up = nn.Upsample(scale_factor=2, mode='nearest')
-    elif mode =='interp_bilinear':
-        up = nn.Upsample(scale_factor=2, mode='bilinear')
-    elif mode == 'interp_bicubic':
-        up = nn.Upsample(scale_factor=2, mode='bicubic')
+    elif mode == 'interp':
+        up = nn.Upsample(scale_factor=2, mode='trilinear')
     else:
-        print('[conv] | [interp_nearest] | [interp_bilinear] | [interp_bicubic]')
+        print('[conv] | [interp]')
         sys.exit(0)
     layers = [up]
     return nn.Sequential(*layers)
