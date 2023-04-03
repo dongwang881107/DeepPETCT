@@ -32,7 +32,7 @@ def main(args):
     # determine neural networks
     model = deeparch.redcnn(bn_flag=True, sa_flag=True)
     if args.mode == 'train':
-        print_model(model)
+        print_model(model, [(1,1,144,144),(1,1,144,144)])
     # determine loss functions
     loss_weights = [1,1.2,1,1]
     loss_modalities = ['PET','PET','PET','PET']

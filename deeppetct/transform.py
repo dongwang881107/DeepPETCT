@@ -70,7 +70,11 @@ def to_tensor(x, y, z):
 
 # rotate
 def rotate(x, y, z, angle=45):
-    return TF.rotate(x, angle=angle), TF.rotate(y, angle=angle), TF.rotate(z, angle=angle)
+    if random.random() > 0.5:
+        x = TF.rotate(x, angle=angle)
+        y = TF.rotate(y, angle=angle)
+        z = TF.rotate(z, angle=angle)
+    return x, y, z
 
 class ResizeCT:
     def __call__(self, x, y, z):
