@@ -8,7 +8,7 @@ class REDCNN(nn.Module):
     # Multi-Branch Input (CT+PET)
     # Page 2526, Figure 1
     # Conv3d (s=1) + ConvTranspose3d (s=1)
-    def __init__(self, bn_flag, sa_flag):
+    def __init__(self, bn_flag, sa_flag, sa_mode):
         super(REDCNN, self).__init__()
         print('Multi-Branch Residual Encoder Decoder CNN with Batch Normalization [{}] and Self-Attention [{}]'.format(bn_flag, sa_flag))
 
@@ -19,11 +19,12 @@ class REDCNN(nn.Module):
         self.acti = 'relu'
         self.bn_flag = bn_flag # batch normalization
         self.sa_flag = sa_flag # self attention
+        self.sa_mode = sa_mode
         if self.sa_flag == True:
-            self.sa_ct = SelfAttenBlock(self.out_channel)
-            self.sa_pet = SelfAttenBlock(self.out_channel)
-            self.sa_com1 = SelfAttenBlock(self.out_channel*2)
-            self.sa_com2 = SelfAttenBlock(self.out_channel)
+            self.sa_ct = atten_block(self.out_channel, self.out_channel//8, self.sa_mode)
+            self.sa_pet = atten_block(self.out_channel, self.out_channel//8, self.sa_mode)
+            self.sa_com1 = atten_block(self.out_channel*2, self.out_channel//8, self.sa_mode)
+            self.sa_com2 = atten_block(self.out_channel, self.out_channel//8, self.sa_mode)
 
         # ct branch
         self.layer_ct1 = conv_block('conv', 1, self.out_channel, self.kernel_size, self.stride, self.padding, self.acti, self.bn_flag)

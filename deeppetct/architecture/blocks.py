@@ -69,14 +69,14 @@ def up_sampling(mode, kernel_size, stride, padding, in_channels=None, out_channe
     return nn.Sequential(*layers)
 
 # Self-Attention Block
-class SelfAttenBlock(nn.Module):
-    def __init__(self, in_dim):
-        super(SelfAttenBlock, self).__init__()
+class SelfAttention3D(nn.Module):
+    def __init__(self, in_dim, num_heads):
+        super(SelfAttention3D, self).__init__()
         
         # Define the query, key, and value convolutions
-        self.query_conv = nn.Conv3d(in_channels = in_dim , out_channels = in_dim//8 , kernel_size= 1)
-        self.key_conv = nn.Conv3d(in_channels = in_dim , out_channels = in_dim//8 , kernel_size= 1)
-        self.value_conv = nn.Conv3d(in_channels = in_dim , out_channels = in_dim , kernel_size= 1)
+        self.query_conv = nn.Conv3d(in_channels = in_dim , out_channels = num_heads , kernel_size= 1)
+        self.key_conv = nn.Conv3d(in_channels = in_dim , out_channels = num_heads , kernel_size= 1)
+        self.value_conv = nn.Conv3d(in_channels = in_dim , out_channels = num_heads , kernel_size= 1)
 
         # Define scaler
         self.gamma = nn.Parameter(torch.zeros(1))
@@ -105,3 +105,78 @@ class SelfAttenBlock(nn.Module):
         out = self.gamma * out + x
 
         return out
+
+class BlockwiseAttention3D(nn.Module):
+    def __init__(self, in_dim, num_heads):
+        super(BlockwiseAttention3D, self).__init__()
+        self.block_size = 32
+        self.num_heads = num_heads
+        self.query_conv = nn.Conv3d(in_channels=in_dim, out_channels=num_heads, kernel_size=1)
+        self.key_conv = nn.Conv3d(in_channels=in_dim, out_channels=num_heads, kernel_size=1)
+        self.value_conv = nn.Conv3d(in_channels=in_dim, out_channels=num_heads, kernel_size=1)
+        self.softmax = nn.Softmax(dim=-1)
+        
+    def forward(self, x):
+        batch_size, channels, depth, height, width = x.size()
+        
+        # Compute query, key, and value
+        query = self.query_conv(x.unsqueeze(1)).view(batch_size * self.num_heads, -1, depth, height, width)
+        key = self.key_conv(x.unsqueeze(1)).view(batch_size * self.num_heads, -1, depth, height, width)
+        value = self.value_conv(x.unsqueeze(1)).view(batch_size * self.num_heads, -1, depth, height, width)
+        
+        # Compute attention scores
+        query_blocks = query.unfold(2, self.block_size, self.block_size).unfold(3, self.block_size, self.block_size).unfold(4, self.block_size, self.block_size)
+        key_blocks = key.unfold(2, self.block_size, self.block_size).unfold(3, self.block_size, self.block_size).unfold(4, self.block_size, self.block_size)
+        scores = torch.einsum('bijklm,bipqrs->bjklmrs', query_blocks, key_blocks)
+        scores = scores / (self.block_size ** 3)
+        attention = self.softmax(scores)
+        
+        # Compute output
+        value_blocks = value.unfold(2, self.block_size, self.block_size).unfold(3, self.block_size, self.block_size).unfold(4, self.block_size, self.block_size)
+        out_blocks = torch.einsum('bjklmrs,bipqrs->bijklm', attention, value_blocks)
+        out = out_blocks.view(batch_size, self.num_heads, channels, depth, height, width)
+        out = out.sum(dim=1)
+        
+        return out
+
+class LocalAttention3D(nn.Module):
+    def __init__(self, in_dim, num_heads):
+        super(LocalAttention3D, self).__init__()
+        self.window_size = 32
+        self.num_heads = num_heads
+        self.query_conv = nn.Conv3d(in_channels=in_dim, out_channels=num_heads, kernel_size=1)
+        self.key_conv = nn.Conv3d(in_channels=in_dim, out_channels=num_heads, kernel_size=1)
+        self.value_conv = nn.Conv3d(in_channels=in_dim, out_channels=num_heads, kernel_size=1)
+        self.softmax = nn.Softmax(dim=-1)
+        
+    def forward(self, x):
+        batch_size, channels, depth, height, width = x.size()
+        
+        # Compute query, key, and value
+        query = self.query_conv(x.unsqueeze(1)).view(batch_size * self.num_heads, -1, depth, height, width)
+        key = self.key_conv(x.unsqueeze(1)).view(batch_size * self.num_heads, -1, depth, height, width)
+        value = self.value_conv(x.unsqueeze(1)).view(batch_size * self.num_heads, -1, depth, height, width)
+        
+        # Compute attention scores
+        scores = torch.einsum('bijk,bilm->bjklm', query, key)
+        scores = scores / (self.window_size ** 0.5)
+        attention = self.softmax(scores)
+        
+        # Compute output
+        out = torch.einsum('bjklm,bilm->bijk', attention, value)
+        out = out.view(batch_size, self.num_heads, channels, depth, height, width)
+        out = out.sum(dim=1)
+        
+        return out
+    
+def atten_block(in_dim, num_heads, mode):
+    if mode == 'self':
+        attention_block = SelfAttention3D(in_dim, num_heads)
+    elif mode == 'blockwise':
+        attention_block = BlockwiseAttention3D(in_dim, num_heads)
+    elif mode == 'local':
+        attention_block = LocalAttention3D(in_dim, num_heads)
+    else:
+        print("[self | blockwise | local]")
+        sys.exit(0)
+    return attention_block
