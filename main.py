@@ -30,9 +30,9 @@ def main(args):
                             patch_n=args.patch_n if args.mode=='train' else None, 
                             patch_size=args.patch_size if args.mode=='train' else None)
     # determine neural networks
-    model = eval('deeparch.{}()'.format(args.arch))
+    model = deeparch.unet_mp(sa_mode='blockwise')
     if args.mode == 'train':
-        print_model(model, (1,2,144,144,240))
+        print_model(model, (1,2,64,64,64))
     # determine loss functions
     loss_weights = [1]
     loss_func = LossCompose([nn.MSELoss()], loss_weights)
@@ -46,7 +46,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='DeepPETCT', usage=print_usage())
-    subparsers = parser.add_subparsers(dest = 'mode', required=True, help='train | test | plot')
+    subparsers = parser.add_subparsers(dest = 'mode', required=True, help='train | test')
     
     # training paramters
     subparser_train = subparsers.add_parser('train', help='training mode')
@@ -55,12 +55,11 @@ if __name__ == "__main__":
     subparser_train.add_argument('--save_path', type=str, default='./result_3d', help='saved path of the results')
     subparser_train.add_argument('--num_workers', type=int, default=0, help='number of workers used')
     subparser_train.add_argument('--log_name', type=str, default='log', help='name of the log file')
-    subparser_train.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/toy')
-    subparser_train.add_argument('--arch', type=str, default='unet_mp')
+    subparser_train.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/LCPET/pet10to60_old/toy/3d')
     subparser_train.add_argument('--batch_size', type=int, default=1, help='batch size per epoch')
-    subparser_train.add_argument('--patch_n', type=int, default=10, help='number of patches extract from one image')
+    subparser_train.add_argument('--patch_n', type=int, default=1, help='number of patches extract from one image')
     subparser_train.add_argument('--patch_size', type=int, default=32, help='patch size')
-    subparser_train.add_argument('--lr', type=float, default=5e-4, help='learning rate of model')
+    subparser_train.add_argument('--lr', type=float, default=1e-4, help='learning rate of model')
     subparser_train.add_argument('--scheduler', type=str, default='step', help='type of the scheduler')
     subparser_train.add_argument('--gamma', type=float, default=1, help='decay value of the learning rate')
     subparser_train.add_argument('--num_epochs', type=int, default=100, help='number of epochs')
@@ -83,26 +82,6 @@ if __name__ == "__main__":
     subparser_test.add_argument('--log_name', type=str, default='log', help='name of the log file')
     subparser_test.add_argument('--metric_name', type=str, default='test_metric', help='name of the metric')
     subparser_test.add_argument('--pred_name', type=str, default='test_pred', help='name of testing predictions')
-
-    # plotting parameters
-    subparser_plot = subparsers.add_parser('plot', help='plotting mode')
-    subparser_plot.add_argument('--case_idx', nargs='+', type=int, default=[], help='case index to be plotted')
-    subparser_plot.add_argument('--trans_idx', nargs='+', type=int, default=[], help='transverse plane index to be plotted')
-    subparser_plot.add_argument('--sag_idx', nargs='+', type=int, default=[], help='sagittal plane index to be plotted')
-    subparser_plot.add_argument('--coron_idx', nargs='+', type=int, default=[], help='coronal plane index to be plotted')
-    subparser_plot.add_argument('--num_workers', type=int, default=2, help='number of workers used')
-    subparser_plot.add_argument('--save_path', type=str, default='./test', help='saved path of the results')
-    subparser_plot.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/toy')
-    subparser_plot.add_argument('--arch', type=str, default='unet_mp')
-    subparser_plot.add_argument('--pred_name', type=str, default='test_pred', help='name of testing predictions to be plotted')
-    subparser_plot.add_argument('--loss_name', type=str, default='train_loss', help='name of training loss')
-    subparser_plot.add_argument('--valid_metric_name', type=str, default='valid_metric', help='name of validation metric')
-    subparser_plot.add_argument('--test_metric_name', type=str, default='test_metric', help='name of validation metric')
-    subparser_plot.add_argument('--log_name', type=str, default='log', help='name of the log file')
-    subparser_plot.add_argument('--not_save_plot', action='store_false', help='not to save the plot')
-    subparser_plot.add_argument('--not_plot_loss', action='store_false', help='not to plot training loss')
-    subparser_plot.add_argument('--not_plot_metric', action='store_false', help='not to plot validation metric')
-    subparser_plot.add_argument('--not_plot_pred', action='store_false', help='not to plot predictions')
 
     args = parser.parse_args()
 

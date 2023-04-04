@@ -1,10 +1,6 @@
 
-__all__ = ["CNN"]
+__all__ = ["UNET_MP"]
 
-from . import CNN
+from . import UNET_MP
 
-redcnn = CNN.REDCNN
-unet_mp = CNN.UNET_MP
-unet_tmi = CNN.UNET_TMI
-unet_mia = CNN.UNET_MIA
-unet_ra = CNN.UNET_RADIOLOGY
+unet_mp = UNET_MP.UNET_MP
