@@ -119,7 +119,7 @@ class SlicewiseAttention3D(nn.Module):
         self.gamma = nn.Parameter(torch.zeros(1))
 
         # Define the softmax operation
-        self.softmax  = nn.Softmax(dim=-1)
+        self.softmax = nn.Softmax(dim=-1)
     
     def forward(self, x):
         # Get the spatial dimensions of the input tensor
@@ -145,12 +145,13 @@ class SlicewiseAttention3D(nn.Module):
 
             # Calculate the weighted sum of the values
             out_slice = torch.bmm(value, attention.permute(0,2,1))
-            out_slice = out_slice.view(batch_size, channels, 1, self.num_slices, width, height)
+            out_slice = out_slice.view(batch_size, channels, self.num_slices, width, height)
 
             out[:,:,i,:,:,:] = out_slice  
         
         # Apply scaling factor and add residual
         out = out.view(batch_size, channels, depth, height, width)
+        x = x.view(batch_size, channels, depth, height, width)
         out = self.gamma * out + x
 
         return out
@@ -169,7 +170,7 @@ class BlockwiseAttention3D(nn.Module):
         self.gamma = nn.Parameter(torch.zeros(1))
 
         # Define the softmax operation
-        self.softmax  = nn.Softmax(dim=-1)
+        self.softmax = nn.Softmax(dim=-1)
         
     def forward(self, x):
         # Get the spatial dimensions of the input tensor
@@ -178,7 +179,7 @@ class BlockwiseAttention3D(nn.Module):
         # split x into small blocks
         x = x.view(batch_size, channels, self.num_blocks, depth//self.num_blocks, self.num_blocks,\
                     height//self.num_blocks, self.num_blocks, width//self.num_blocks)
-        
+
         # Block-wise attention
         out = torch.zeros_like(x)
         for idx in range(self.num_blocks**3):
@@ -186,10 +187,10 @@ class BlockwiseAttention3D(nn.Module):
             i = idx//(self.num_blocks**2)
             j = (idx//self.num_blocks)%self.num_blocks
             k = i%self.num_blocks
-            x_block = torch.suqeeze(x[:,:,i,:,j,:,k,:])
+            x_block = x[:,:,i,:,j,:,k,:]
             
             # Compute query, key, and value
-            query = self.query_conv(x_block).view(batch_size, -1, (depth//self.num_blocks)*(height//self.num_blocks)*(width//self.num_blocks))
+            query = self.query_conv(x_block).view(batch_size, -1, (depth//self.num_blocks)*(height//self.num_blocks)*(width//self.num_blocks)).permute(0,2,1)
             key = self.key_conv(x_block).view(batch_size, -1, (depth//self.num_blocks)*(height//self.num_blocks)*(width//self.num_blocks))
             value = self.value_conv(x_block).view(batch_size, -1, (depth//self.num_blocks)*(height//self.num_blocks)*(width//self.num_blocks))
             
@@ -199,12 +200,13 @@ class BlockwiseAttention3D(nn.Module):
         
             # Calculate the weighted sum of the values
             out_block = torch.bmm(value, attention.permute(0,2,1))
-            out_block = out_block.view(batch_size, channels, 1, depth//self.num_blocks, 1, width//self.num_blocks, 1, height//self.num_blocks)
+            out_block = out_block.view(batch_size, channels, depth//self.num_blocks, width//self.num_blocks, height//self.num_blocks)
 
             out[:,:,i,:,j,:,k,:] = out_block
         
         # Apply scaling factor and add residual
         out = out.view(batch_size, channels, depth, height, width)
+        x = x.view(batch_size, channels, depth, height, width)
         out = self.gamma * out + x 
 
         return out

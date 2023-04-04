@@ -32,7 +32,7 @@ def main(args):
     # determine neural networks
     model = deeparch.m3snet(sa_mode='blockwise')
     if args.mode == 'train':
-        print_model(model, ([1,1,64,64,64],[1,1,64,64,64]))
+        print_model(model, [[1,1,64,64,64],[1,1,64,64,64]])
     # determine loss functions
     loss_weights = [1,1.2,1]
     loss_modalities = ['PET','PET','PET']
