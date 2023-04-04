@@ -27,18 +27,18 @@ class MetricsCompose:
 def batch_metric(x, y, name, reduction='sum'):
     metric = 0
     for i in range(x.size()[0]):
-        x_slice = x[i,0,:,:,:]
-        y_slice = y[i,0,:,:,:]
+        x_batch = x[i,0,:,:,:]
+        y_batch = y[i,0,:,:,:]
         if name == 'MSE':
-            metric += compare_MSE(x_slice, y_slice)
+            metric += compare_MSE(x_batch, y_batch)
         elif name == 'RMSE':
-            metric += compare_RMSE(x_slice, y_slice)
+            metric += compare_RMSE(x_batch, y_batch)
         elif name == 'PSNR':
-            metric += compare_PSNR(x_slice, y_slice)
+            metric += compare_PSNR(x_batch, y_batch)
         elif name == 'SSIM':
-            x_slice = x_slice.unsqueeze(0).unsqueeze(0)
-            y_slice = y_slice.unsqueeze(0).unsqueeze(0)
-            metric += compare_SSIM(x_slice, y_slice)
+            x_batch = x_batch.unsqueeze(0).unsqueeze(0)
+            y_batch = y_batch.unsqueeze(0).unsqueeze(0)
+            metric += compare_SSIM(x_batch, y_batch)
         else:
             print('MSE | RMSE | PSNR | SSIM')
             sys.exit(0)

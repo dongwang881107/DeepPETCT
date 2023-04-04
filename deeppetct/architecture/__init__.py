@@ -1,9 +1,6 @@
 
-__all__ = ["CNN"]
+__all__ = ["M3SNET"]
 
-from . import CNN
+from . import M3SNET
 
-redcnn = CNN.REDCNN
-unet_mp = CNN.UNET_MP
-unet_tmi = CNN.UNET_TMI
-unet_mia = CNN.UNET_MIA
+m3snet = M3SNET.M3SNET

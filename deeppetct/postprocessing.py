@@ -19,8 +19,8 @@ def print_usage():
     '''
 
 # print model
-def print_model(model):
-    summary(model, input_size=[(1,1,32,32,32),(1,1,32,32,32)], dtypes=[torch.float, torch.float], col_names=["kernel_size", "output_size", "num_params"])
+def print_model(model, input_size):
+    summary(model, input_size=input_size, dtypes=[torch.float, torch.float], col_names=["kernel_size", "output_size", "num_params"])
 
 # print arguments
 def print_args(args):
