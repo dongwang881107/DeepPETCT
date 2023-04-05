@@ -30,7 +30,7 @@ def main(args):
                             patch_n=args.patch_n if args.mode=='train' else None, 
                             patch_size=args.patch_size if args.mode=='train' else None)
     # determine neural networks
-    model = deeparch.m3snet(sa_mode='blockwise')
+    model = deeparch.m3snet(sa_mode='blockwise', num_splits=4)
     if args.mode == 'train':
         print_model(model, [[1,1,64,64,64],[1,1,64,64,64]])
     # determine loss functions
@@ -56,15 +56,15 @@ if __name__ == "__main__":
     subparser_train.add_argument('--save_path', type=str, default='./result_3d', help='saved path of the results')
     subparser_train.add_argument('--num_workers', type=int, default=0, help='number of workers used')
     subparser_train.add_argument('--log_name', type=str, default='log', help='name of the log file')
-    subparser_train.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/LCPET/pet10to60_old/toy/3d')
+    subparser_train.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/PET/LCPET/pet10to60_old/toy/3d')
     subparser_train.add_argument('--batch_size', type=int, default=1, help='batch size per epoch')
     subparser_train.add_argument('--patch_n', type=int, default=10, help='number of patches extract from one image')
-    subparser_train.add_argument('--patch_size', type=int, default=32, help='patch size')
-    subparser_train.add_argument('--lr', type=float, default=5e-4, help='learning rate of model')
+    subparser_train.add_argument('--patch_size', type=int, default=64, help='patch size')
+    subparser_train.add_argument('--lr', type=float, default=1e-4, help='learning rate of model')
     subparser_train.add_argument('--scheduler', type=str, default='step', help='type of the scheduler')
-    subparser_train.add_argument('--gamma', type=float, default=1, help='decay value of the learning rate')
-    subparser_train.add_argument('--num_epochs', type=int, default=100, help='number of epochs')
-    subparser_train.add_argument('--decay_iters', type=int, default=10, help='number of iterations to decay learning rate')
+    subparser_train.add_argument('--gamma', type=float, default=0.8, help='decay value of the learning rate')
+    subparser_train.add_argument('--num_epochs', type=int, default=1000, help='number of epochs')
+    subparser_train.add_argument('--decay_iters', type=int, default=100, help='number of iterations to decay learning rate')
     subparser_train.add_argument('--save_iters', type=int, default=50, help='number of iterations to save models')
     subparser_train.add_argument('--print_iters', type=int, default=1, help='number of iterations to print statistics')
     subparser_train.add_argument('--loss_name', type=str, default='train_loss', help='name of the training loss')
@@ -73,11 +73,12 @@ if __name__ == "__main__":
     
     # testing parameters
     subparser_test = subparsers.add_parser('test', help='testing mode')
-    subparser_test.add_argument('--save_path', type=str, default='./test', help='saved path of the results')
+    subparser_test.add_argument('--patch_size', type=int, default=64, help='patch size')
+    subparser_test.add_argument('--stride', type=int, default=16, help='stride when extract the patching')
+    subparser_test.add_argument('--save_path', type=str, default='./result_3d', help='saved path of the results')
     subparser_test.add_argument('--device_idx', nargs='+', type=int, default=[], help='gpu numbers')
-    subparser_test.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/big')
+    subparser_test.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/PET/LCPET/pet10to60_old/toy/3d')
     subparser_test.add_argument('--num_workers', type=int, default=4, help='number of workers used')
-    subparser_test.add_argument('--num_slices', type=int, default=10, help='number of slices per reconstruction')
     subparser_test.add_argument('--checkpoint', type=str, default='checkpoint_final', help='name of the checkpoint')
     subparser_test.add_argument('--log_name', type=str, default='log', help='name of the log file')
     subparser_test.add_argument('--metric_name', type=str, default='test_metric', help='name of the metric')

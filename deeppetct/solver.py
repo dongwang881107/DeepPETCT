@@ -2,6 +2,7 @@ import time
 import numpy as np
 import torch
 
+from empatches import EMPatches
 from deeppetct.architecture.blocks import *
 from deeppetct.preprocessing import *
 from deeppetct.postprocessing import *
@@ -37,8 +38,9 @@ class Solver(object):
             self.metric_name = args.metric_name
         elif self.mode == 'test':
             # load teseting parameters
+            self.patch_size = args.patch_size
+            self.stride = args.stride
             self.device_idx = args.device_idx
-            self.num_slices = args.num_slices
             self.metric_func = metric_func
             self.metric_name = args.metric_name
             self.pred_name = args.pred_name
@@ -209,25 +211,32 @@ class Solver(object):
         total_metric_pred = []
         total_metric_x = []
         self.model.eval()
+        emp = EMPatches()
         with torch.no_grad():
             for i, (pet10,ct,pet60) in enumerate(self.dataloader):
-                # resize to (batch,feature,weight,height)
                 _, depth, height, width = pet10.size()
-                pet10 = pet10.view(-1, 1, depth, height, width)
-                ct = ct.view(-1, 1, depth, height, width)
-                pet60 = pet60.view(-1, 1, depth, height, width)
-                # move data to device
-                pet10 = pet10.float().to(self.device)
-                ct = ct.float().to(self.device)
-                pet60 = pet60.float().to(self.device)
-                # predict
-                pred = torch.zeros_like(pet60)
-                for i in range(depth // self.num_slices):
-                    start_idx = i*self.num_slices
-                    end_idx = i*self.num_slices + self.num_slices
-                    pred[:,:,start_idx:end_idx,:,:] =\
-                          self.model(pet10[:,:,start_idx:end_idx,:,:], ct[:,:,start_idx:end_idx,:,:])
+                pet10 = pet10.view(depth, height, width)
+                ct = ct.view(depth, height, width)
+                # split into patches
+                pet10_patches, indices = emp.extract_patches(pet10, patchsize=self.patch_size, stride=self.stride, vox=True)
+                ct_patches, _ = emp.extract_patches(ct, patchsize=self.patch_size, stride=self.stride, vox=True)
+                pred_patches = []
+                # patch-based testing
+                for j in range(len(pet10_patches)):
+                    pet10_patch = pet10_patches[j].view(1,1,self.patch_size,self.patch_size,self.patch_size)
+                    ct_patch = ct_patches[j].view(1,1,self.patch_size,self.patch_size,self.patch_size)
+                    pet10_patch = pet10_patch.float().to(self.device)
+                    ct_patch = ct_patch.float().to(self.device)
+                    # predict
+                    pred_patch = self.model(pet10_patch,ct_patch)
+                    pred_patches.append(pred_patch.squeeze())
+                # merge patches together
+                pred = torch.tensor(emp.merge_patches(pred_patches, indices, mode='avg'))
                 pred = pred/torch.max(pred)
+                # compute metrics
+                pred = pred.view(1, 1, depth, height, width)
+                pet10 = pet10.view(1, 1, depth, height, width)
+                pet60 = pet60.view(1, 1, depth, height, width)
                 metric_x = self.metric_func(pet10, pet60)
                 metric_pred = self.metric_func(pred, pet60)
                 total_metric_x.append(metric_x)

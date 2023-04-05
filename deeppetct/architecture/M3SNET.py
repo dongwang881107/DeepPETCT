@@ -4,7 +4,7 @@ from deeppetct.architecture.blocks import *
 
 class M3SNET(nn.Module):
     # Multi-Modality Multi-Branch Multi-Self-Attention Network with Structure-Promoting Loss for Low-Dose PET/CT Reconstruction
-    def __init__(self, sa_mode):
+    def __init__(self, sa_mode, num_splits):
         super(M3SNET, self).__init__()
         print('M3S-NET with {} Attention'.format(sa_mode))
 
@@ -14,7 +14,7 @@ class M3SNET(nn.Module):
         self.out_channel = 96
         self.acti = 'relu'
         self.sa_mode = sa_mode
-        self.num_splits = 2
+        self.num_splits = num_splits
 
         # attention blocks
         self.sa_ct = atten_block(self.out_channel, self.num_splits, self.sa_mode)
@@ -51,7 +51,7 @@ class M3SNET(nn.Module):
         # pet branch
         out_pet = self.layer_pet2(self.layer_pet1(pet10))
         res1 = out_pet
-        out_pet = self.sa_ct(out_pet)
+        out_pet = self.sa_pet(out_pet)
         out_pet = self.layer_pet4(self.layer_pet3(out_pet))
         res2 = out_pet
         out_pet = self.layer_pet5(out_pet)
