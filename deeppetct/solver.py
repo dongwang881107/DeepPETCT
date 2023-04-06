@@ -240,7 +240,7 @@ class Solver(object):
                 x0_patches, indices = emp.extract_patches(x[0,:,:,:], patchsize=self.patch_size, stride=self.stride, vox=True)
                 x1_patches, _ = emp.extract_patches(x[1,:,:,:], patchsize=self.patch_size, stride=self.stride, vox=True)
                 real_patches, _ = emp.extract_patches(real, patchsize=self.patch_size, stride=self.stride, vox=True)
-                pred_patches = []
+                fake_patches = []
                 # patch-based testing
                 for j in range(len(real_patches)):
                     x0_patch = x0_patches[j].view(1,1,self.patch_size,self.patch_size,self.patch_size)
@@ -248,13 +248,13 @@ class Solver(object):
                     x_patch = torch.cat((x0_patch,x1_patch),1)
                     x_patch = x_patch.float().to(self.device)
                     # predict
-                    pred_patch = self.model(x_patch)
-                    pred_patches.append(pred_patch.squeeze().cpu())
+                    fake_patch = self.model.generator(x_patch)
+                    fake_patches.append(fake_patch.squeeze().cpu())
                 # merge patches together
-                pred = torch.tensor(emp.merge_patches(pred_patches, indices, mode='avg'))
-                pred = pred/torch.max(pred)
+                fake = torch.tensor(emp.merge_patches(fake_patches, indices, mode='avg'))
+                fake = fake/torch.max(fake)
                 # compute metrics
-                pred = pred.view(1, 1, depth, height, width).float()
+                fake = fake.view(1, 1, depth, height, width).float()
                 pet10 = x[0,:,:,:].view(1, 1, depth, height, width).float()
                 real = real.view(1, 1, depth, height, width).float()
                 metric_x = self.metric_func(pet10, real)
