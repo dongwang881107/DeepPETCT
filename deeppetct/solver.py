@@ -229,19 +229,20 @@ class Solver(object):
                     ct_patch = ct_patch.float().to(self.device)
                     # predict
                     pred_patch = self.model(pet10_patch,ct_patch)
-                    pred_patches.append(pred_patch.squeeze())
+                    pred_patches.append(pred_patch.squeeze().cpu())
                 # merge patches together
                 pred = torch.tensor(emp.merge_patches(pred_patches, indices, mode='avg'))
                 pred = pred/torch.max(pred)
                 # compute metrics
-                pred = pred.view(1, 1, depth, height, width)
-                pet10 = pet10.view(1, 1, depth, height, width)
-                pet60 = pet60.view(1, 1, depth, height, width)
+                pred = pred.view(1, 1, depth, height, width).float()
+                pet10 = pet10.view(1, 1, depth, height, width).float()
+                pet60 = pet60.view(1, 1, depth, height, width).float()
                 metric_x = self.metric_func(pet10, pet60)
                 metric_pred = self.metric_func(pred, pet60)
                 total_metric_x.append(metric_x)
                 total_metric_pred.append(metric_pred)
                 # save predictions
+                pred = pred.squeeze()
                 if i == 0:
                     total_pred = pred
                 else:
