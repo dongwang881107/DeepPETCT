@@ -232,24 +232,29 @@ class Solver(object):
         emp = EMPatches()
         with torch.no_grad():
             for i, (x,real) in enumerate(self.dataloader):
-                # resize to (batch,feature,weight,height)
                 _, _, depth, height, width = x.size()
-                # resize to (batch,feature,weight,height)
-                x = x.view(-1, 2, depth, height, width)
-                real = real.view(-1, 1, depth, height, width)
-                # move data to device
-                x = x.float().to(self.device)
-                real = real.float().to(self.device)
+                x = x.view(2, depth, height, width)
+                real = real.view(depth, height, width)
                 # predict
-                fake = torch.zeros_like(real)
-                for i in range(depth // self.num_slices):
-                    start_idx = i*self.num_slices
-                    end_idx = i*self.num_slices + self.num_slices
-                    fake[:,:,start_idx:end_idx,:,:] =\
-                          self.model.generator(x[:,:,start_idx:end_idx,:,:])
-                fake = fake/torch.max(fake)
+                # split into patches
+                x0_patches, indices = emp.extract_patches(x[0,:,:,:], patchsize=self.patch_size, stride=self.stride, vox=True)
+                x1_patches, _ = emp.extract_patches(x[1,:,:,:], patchsize=self.patch_size, stride=self.stride, vox=True)
+                real_patches, _ = emp.extract_patches(real, patchsize=self.patch_size, stride=self.stride, vox=True)
+                pred_patches = []
+                # patch-based testing
+                for j in range(len(real_patches)):
+                    x0_patch = x0_patches[j].view(1,1,self.patch_size,self.patch_size,self.patch_size)
+                    x1_patch = x1_patches[j].view(1,1,self.patch_size,self.patch_size,self.patch_size)
+                    x_patch = torch.cat((x0_patch,x1_patch),1)
+                    x_patch = x_patch.float().to(self.device)
+                    # predict
+                    pred_patch = self.model(x_patch)
+                    pred_patches.append(pred_patch.squeeze().cpu())
+                # merge patches together
+                pred = torch.tensor(emp.merge_patches(pred_patches, indices, mode='avg'))
+                pred = pred/torch.max(pred)
                 # compute metrics
-                fake = fake.view(1, 1, depth, height, width).float()
+                pred = pred.view(1, 1, depth, height, width).float()
                 pet10 = x[0,:,:,:].view(1, 1, depth, height, width).float()
                 real = real.view(1, 1, depth, height, width).float()
                 metric_x = self.metric_func(pet10, real)

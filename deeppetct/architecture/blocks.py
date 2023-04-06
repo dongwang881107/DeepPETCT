@@ -26,7 +26,7 @@ def weights_init(m):
         nn.init.kaiming_normal_(m.weight.data, mode='fan_in')
 
 # convolution block: conv-[bn]-acti
-def conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti, bn_flag=True):
+def conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti):
     if mode == 'conv':
         conv = nn.Conv3d(in_channels, out_channels, kernel_size, stride, padding)
     elif mode == 'trans':
@@ -40,7 +40,7 @@ def conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, ac
     return nn.Sequential(*layers)
 
 # down sampling block
-def down_sampling(mode, kernel_size, stride, padding, in_channels=None, out_channels=None, acti=None, bn_flag=True):
+def down_sampling(mode, kernel_size, stride, padding, in_channels=None, out_channels=None, acti=None):
     if mode == 'conv':
         down = conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti)
     elif mode =='maxpooling':
@@ -52,7 +52,7 @@ def down_sampling(mode, kernel_size, stride, padding, in_channels=None, out_chan
     return nn.Sequential(*layers)
 
 # up sampling block
-def up_sampling(mode, kernel_size, stride, padding, in_channels=None, out_channels=None, acti=None, bn_flag=True):
+def up_sampling(mode, kernel_size, stride, padding, in_channels=None, out_channels=None, acti=None):
     if mode == 'trans':
         up = conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, acti)
     elif mode == 'interp':

@@ -22,13 +22,13 @@ class LAGANS_generator(nn.Module):
         self.layer5 = down_sampling('conv', self.kernel_size, 2, self.padding, in_channels=256, out_channels=512, acti=self.acti)
         self.layer6 = down_sampling('conv', self.kernel_size, 2, self.padding, in_channels=512, out_channels=512, acti=self.acti)
         # decoder
-        self.layer7 = up_sampling(mode='interp_bilinear')
+        self.layer7 = up_sampling('interp', self.kernel_size, 1, self.padding)
         self.layer8 = conv_block('conv', 512, 512, self.kernel_size, 1, self.padding, self.acti)
-        self.layer9 = up_sampling(mode='interp_bilinear')
+        self.layer9 = up_sampling('interp', self.kernel_size, 1, self.padding)
         self.layer10 = conv_block('conv', 1024, 256, self.kernel_size, 1, self.padding, self.acti)
-        self.layer11 = up_sampling(mode='interp_bilinear')
+        self.layer11 = up_sampling('interp', self.kernel_size, 1, self.padding)
         self.layer12 = conv_block('conv', 512, 128, self.kernel_size, 1, self.padding, self.acti)
-        self.layer13 = up_sampling(mode='interp_bilinear')
+        self.layer13 = up_sampling('interp', self.kernel_size, 1, self.padding)
         self.layer14 = conv_block('conv', 256, 64, self.kernel_size, 1, self.padding, self.acti)
         self.layer15 = conv_block('conv', 128, 1, self.kernel_size, 1, self.padding, self.acti)
         

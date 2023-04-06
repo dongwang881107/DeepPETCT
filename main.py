@@ -54,7 +54,7 @@ if __name__ == "__main__":
     subparser_train.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/toy')
     subparser_train.add_argument('--batch_size', type=int, default=1, help='batch size per epoch')
     subparser_train.add_argument('--patch_n', type=int, default=10, help='number of patches extract from one image')
-    subparser_train.add_argument('--patch_size', type=int, default=32, help='patch size')
+    subparser_train.add_argument('--patch_size', type=int, default=64, help='patch size')
     subparser_train.add_argument('--lr', type=float, default=1e-4, help='learning rate of model')
     subparser_train.add_argument('--lambda1', type=float, default=1e-1, help='parameter in generator loss')
     subparser_train.add_argument('--lambda2', type=float, default=1e1, help='parameter in discriminator loss')
