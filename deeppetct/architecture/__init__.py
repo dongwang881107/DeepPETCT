@@ -1,7 +1,6 @@
 
-__all__ = ["GAN"]
+__all__ = ["LAGANS"]
 
-from . import GAN
+from . import LAGANS
 
-wganvgg = GAN.WGANVGG
-gan_tmi = GAN.GAN_TMI
+lagans = LAGANS.LAGANS

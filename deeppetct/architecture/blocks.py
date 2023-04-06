@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch
 import sys
 
 
@@ -29,14 +30,13 @@ def conv_block(mode, in_channels, out_channels, kernel_size, stride, padding, ac
     if mode == 'conv':
         conv = nn.Conv3d(in_channels, out_channels, kernel_size, stride, padding)
     elif mode == 'trans':
-        conv = nn.ConvTranspose3d(in_channels, out_channels, kernel_size, stride, padding, output_padding=1)
+        conv = nn.ConvTranspose3d(in_channels, out_channels, kernel_size, stride, padding)
     else:
         print('[conv] | [trans]')
         sys.exit(0)
-    if bn_flag == True:
-        bn = nn.BatchNorm3d(out_channels)
+    bn = nn.BatchNorm3d(out_channels)
     acti = get_acti(acti)
-    layers = [conv,bn,acti] if bn_flag == True else [conv,acti]
+    layers = [conv,bn,acti]
     return nn.Sequential(*layers)
 
 # down sampling block

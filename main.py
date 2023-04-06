@@ -29,8 +29,7 @@ def main(args):
                             patch_n=args.patch_n if args.mode=='train' else None, 
                             patch_size=args.patch_size if args.mode=='train' else None)
     # determine neural networks
-    model = deeparch.gan_tmi(args.patch_size, args.lambda1)
-    # model = deeparch.wganvgg(args.patch_size, args.lambda1, args.lambda2)
+    model = deeparch.lagans(args.patch_size, args.lambda1)
     if args.mode == 'train':
         print_model(model, (1,2,144,144,144), (1,1,64,64,64))
     # determine metric functions
@@ -38,12 +37,12 @@ def main(args):
     # build solver
     solver = Solver(dataloader, model, metric_func, args)    
 
-    # training/testing/plotting
+    # training/testing
     eval('solver.{}()'.format(args.mode))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='DeepPETCT', usage=print_usage())
-    subparsers = parser.add_subparsers(dest = 'mode', required=True, help='train | test | plot')
+    subparsers = parser.add_subparsers(dest = 'mode', required=True, help='train | test')
     
     # training paramters
     subparser_train = subparsers.add_parser('train', help='training mode')
@@ -71,37 +70,18 @@ if __name__ == "__main__":
     # testing parameters
     subparser_test = subparsers.add_parser('test', help='testing mode')
     subparser_test.add_argument('--save_path', type=str, default='./gan/test', help='saved path of the results')
+    subparser_test.add_argument('--patch_size', type=int, default=64, help='patch size')
+    subparser_test.add_argument('--stride', type=int, default=16, help='stride')
     subparser_test.add_argument('--device_idx', nargs='+', type=int, default=[], help='gpu numbers')
     subparser_test.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/toy')
     subparser_test.add_argument('--lambda1', type=float, default=1e-1, help='parameter in generator loss')
     subparser_test.add_argument('--lambda2', type=float, default=1e-1, help='parameter in generator loss')
     subparser_test.add_argument('--num_workers', type=int, default=4, help='number of workers used')
     subparser_test.add_argument('--num_slices', type=int, default=10, help='number of slices per reconstruction')
-    subparser_test.add_argument('--patch_size', type=int, default=144, help='patch size')
     subparser_test.add_argument('--checkpoint', type=str, default='checkpoint_best', help='name of the checkpoint')
     subparser_test.add_argument('--log_name', type=str, default='log', help='name of the log file')
     subparser_test.add_argument('--metric_name', type=str, default='test_metric', help='name of the metric')
     subparser_test.add_argument('--pred_name', type=str, default='test_pred', help='name of testing predictions')
-
-    # plotting parameters
-    subparser_plot = subparsers.add_parser('plot', help='plotting mode')
-    subparser_plot.add_argument('--case_idx', nargs='+', type=int, default=[], help='case index to be plotted')
-    subparser_plot.add_argument('--trans_idx', nargs='+', type=int, default=[], help='transverse plane index to be plotted')
-    subparser_plot.add_argument('--sag_idx', nargs='+', type=int, default=[], help='sagittal plane index to be plotted')
-    subparser_plot.add_argument('--coron_idx', nargs='+', type=int, default=[], help='coronal plane index to be plotted')
-    subparser_plot.add_argument('--num_workers', type=int, default=2, help='number of workers used')
-    subparser_plot.add_argument('--patch_size', type=int, default=144, help='patch size')
-    subparser_plot.add_argument('--save_path', type=str, default='./gan/test', help='saved path of the results')
-    subparser_plot.add_argument('--data_path', type=str, default='/Users/dong/Documents/Data/petct/toy')
-    subparser_plot.add_argument('--pred_name', type=str, default='test_pred', help='name of testing predictions to be plotted')
-    subparser_plot.add_argument('--loss_name', type=str, default='train_loss', help='name of training loss')
-    subparser_plot.add_argument('--valid_metric_name', type=str, default='valid_metric', help='name of validation metric')
-    subparser_plot.add_argument('--test_metric_name', type=str, default='test_metric', help='name of validation metric')
-    subparser_plot.add_argument('--log_name', type=str, default='log', help='name of the log file')
-    subparser_plot.add_argument('--not_save_plot', action='store_false', help='not to save the plot')
-    subparser_plot.add_argument('--not_plot_loss', action='store_false', help='not to plot training loss')
-    subparser_plot.add_argument('--not_plot_metric', action='store_false', help='not to plot validation metric')
-    subparser_plot.add_argument('--not_plot_pred', action='store_false', help='not to plot predictions')
 
     args = parser.parse_args()
 
