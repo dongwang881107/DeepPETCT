@@ -289,7 +289,7 @@ class raSPLoss(nn.Module):
         # compute the anisotropic weighting D for x
         b,c,d,h,w = x.size()
         # compute grad_x
-        grad_x1 = x[:,:,1:,:,:]-x[:,:,:w-1,:,:]
+        grad_x1 = x[:,:,1:,:,:]-x[:,:,:d-1,:,:]
         grad_x1 = torch.cat((grad_x1,(x[:,:,1,:,:]-x[:,:,1,:,:]).view(b,c,1,h,w)),2)
         grad_x2 = x[:,:,:,1:,:]-x[:,:,:,:h-1,:]
         grad_x2 = torch.cat((grad_x2,(x[:,:,:,1,:]-x[:,:,:,1,:]).view(b,c,d,1,w)),3)
@@ -305,7 +305,7 @@ class raSPLoss(nn.Module):
         b,c,d,h,w = x.size()
         indicator = self._compute_D(y)
         # compute grad_x
-        grad_x1 = x[:,:,1:,:,:]-x[:,:,:w-1,:,:]
+        grad_x1 = x[:,:,1:,:,:]-x[:,:,:d-1,:,:]
         grad_x1 = torch.cat((grad_x1,(x[:,:,1,:,:]-x[:,:,1,:,:]).view(b,c,1,h,w)),2)
         grad_x2 = x[:,:,:,1:,:]-x[:,:,:,:h-1,:]
         grad_x2 = torch.cat((grad_x2,(x[:,:,:,1,:]-x[:,:,:,1,:]).view(b,c,d,1,w)),3)
@@ -314,7 +314,7 @@ class raSPLoss(nn.Module):
         # compute asp loss of x with repect to y
         asp_x = torch.sqrt(torch.pow(indicator*grad_x1,2)+torch.pow(indicator*grad_x2,2)+torch.pow(indicator*grad_x3,2)+1e-8).mean()
         # compute grad_z
-        grad_z1 = z[:,:,1:,:,:]-z[:,:,:w-1,:,:]
+        grad_z1 = z[:,:,1:,:,:]-z[:,:,:d-1,:,:]
         grad_z1 = torch.cat((grad_z1,(z[:,:,1,:,:]-z[:,:,1,:,:]).view(b,c,1,h,w)),2)
         grad_z2 = z[:,:,:,1:,:]-z[:,:,:,:h-1,:]
         grad_z2 = torch.cat((grad_z2,(z[:,:,:,1,:]-z[:,:,:,1,:]).view(b,c,d,1,w)),3)
