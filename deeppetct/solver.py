@@ -4,7 +4,6 @@ import torch
 import glob
 import matplotlib.pyplot as plt
 
-from torchvision.transforms import Resize 
 from deeppetct.architecture.blocks import *
 from deeppetct.preprocessing import *
 from deeppetct.postprocessing import *
@@ -44,7 +43,6 @@ class Solver(object):
             self.metric_func = metric_func
             self.metric_name = args.metric_name
             self.pred_name = args.pred_name
-            self.atten_name = args.atten_name
             self.checkpoint = args.checkpoint
             self.device = torch.device(set_device(self.device_idx))
             self.model = model
@@ -124,7 +122,7 @@ class Solver(object):
                 self.model.zero_grad()
                 optim.zero_grad()
                 # forward propagation
-                pred, _ = self.model(pet10, ct)
+                pred = self.model(pet10, ct)
                 # compute loss
                 loss = self.loss_func(pred, ct, pet60)
                 # backward propagation
@@ -154,7 +152,7 @@ class Solver(object):
                         ct = ct.view(-1, 1, self.patch_size, self.patch_size)
                         pet60 = pet60.view(-1, 1, self.patch_size, self.patch_size) 
                     # forward propagation
-                    pred, _ = self.model(pet10, ct)
+                    pred = self.model(pet10, ct)
                     # compute loss
                     loss = self.loss_func(pred, ct, pet60)
                     # compute metric
@@ -222,20 +220,17 @@ class Solver(object):
                 ct = ct.float().to(self.device)
                 pet60 = pet60.float().to(self.device)
                 # predict
-                pred, attention = self.model(pet10, ct)
+                pred = self.model(pet10, ct)
                 pred = pred/torch.max(pred)
                 metric_x = self.metric_func(pet10, pet60)
                 metric_pred = self.metric_func(pred, pet60)
                 total_metric_x.append(metric_x)
                 total_metric_pred.append(metric_pred)
                 # save predictions
-                resizer = Resize([144,144])
                 if i == 0:
                     total_pred = pred
-                    total_attention = resizer(attention)
                 else:
                     total_pred = torch.cat((total_pred,pred),0)
-                    total_attention = torch.cat((total_attention,resizer(attention)),0)
 
         # print results
         print_metric(total_metric_x, total_metric_pred)
@@ -244,7 +239,6 @@ class Solver(object):
         # save results
         print('{:-^118s}'.format('Saving results!'))
         save_pred(total_pred.cpu(), self.save_path, self.pred_name)
-        save_pred(total_attention.cpu(), self.save_path, self.atten_name) # save attention
         save_metric((total_metric_x, total_metric_pred), self.save_path, self.metric_name)
         print('{:-^118s}'.format('Done!'))
 
@@ -292,60 +286,6 @@ class Solver(object):
                 plt.plot(metrics[:,j], linewidth=lw, label=keys[j])
                 plt.legend()
                 self._plot(fig, 'valid_'+keys[j].lower())
-
-        # plot attention maps if exist
-        if self.not_plot_atten:
-            atten_path = os.path.join(self.save_path, 'stat', self.atten_name+'.npy')
-            pred_path = os.path.join(self.save_path, 'stat', self.pred_name+'.npy')
-            atten = np.load(atten_path)
-            pred = np.load(pred_path)
-            data_name = self.dataloader.dataset.get_path()
-            # get case number
-            all_cases = []
-            for name in data_name[0]:
-                case_name = name.split('/')[-3]
-                if case_name not in all_cases:
-                    all_cases.append(case_name)
-            for idx in self.case_idx:
-                if idx in range(len(all_cases)):
-                    # load data
-                    case_path = os.path.join(self.data_path, 'testing', all_cases[idx])
-                    pet10_path = sorted(glob.glob(os.path.join(case_path, '10s/*.npy')))
-                    case_len = len(pet10_path)
-                    start_idx = data_name[0].index(pet10_path[0])
-                    p_3d = np.squeeze(pred)[start_idx:start_idx+case_len,:,:]
-                    a_3d = np.squeeze(atten)[start_idx:start_idx+case_len,:,:]
-                    # create fig/case_idx folder if not exist
-                    fig_path = os.path.join(self.save_path, 'fig', all_cases[idx])
-                if not os.path.exists(fig_path):
-                    os.makedirs(fig_path)
-                if len(self.atten_idx) > 0:
-                    for i in self.atten_idx:
-                        p = p_3d[i,:,:]
-                        a = a_3d[i,:,:]
-                        p = p/np.max(p)
-                        a = a/np.max(a)
-                        # blur attention map for better visulization
-                        a = cv2.blur(a,(5,5))
-                        a = cv2.blur(a,(5,5))
-                        a = cv2.blur(a,(5,5))
-                        title = ['Proposed', 'Attention', 'Overlay']
-                        fig = plt.figure(figsize=(15,4))
-                        ax = fig.add_subplot(1,len(title),1)
-                        im = ax.imshow(p, cmap=cmap)
-                        ax.set_title(title[0], fontsize=fs)
-                        ax.axis('off')
-                        ax = fig.add_subplot(1,len(title),2)
-                        im = ax.imshow(a, interpolation='bicubic', cmap='jet')
-                        ax.set_title(title[1], fontsize=fs)
-                        ax.axis('off')
-                        ax = fig.add_subplot(1,len(title),3)
-                        im = ax.imshow(p, alpha=1, cmap=cmap)
-                        im = ax.imshow(a, alpha=0.5, interpolation='nearest', cmap='jet')
-                        ax.set_title(title[2], fontsize=fs)
-                        ax.axis('off')
-                        fig_name = os.path.join(all_cases[idx], 'atten_'+pet10_path[i].split('/')[-1].split('.')[0])
-                        self._plot(fig, fig_name)
 
         # plot predictions/attentions in transverse/sagittal/coronal plane 
         if self.not_plot_pred:

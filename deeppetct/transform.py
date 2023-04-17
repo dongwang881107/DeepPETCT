@@ -7,7 +7,6 @@ __all__ = [
     "TransCompose",
     "ResizeCT",
     "SegmentCT",
-    "SobelCT",
     "MyVflip",
     "MyHflip",
     "MyRotate",
@@ -36,18 +35,6 @@ def segment_ct(x, y, z):
     y = y*mask
     return x, y, z
 
-# detect boundaries in CT
-def sobel_ct(x, y, z):
-    _, mask_y = cv2.threshold(y, 0.2, 1, cv2.THRESH_BINARY)
-    _, mask_z = cv2.threshold(z, 0.01, 1, cv2.THRESH_BINARY)
-    mask = mask_y*mask_z
-    sobel_h = cv2.Sobel(y*mask,cv2.CV_64F,1,0)
-    sobel_v = cv2.Sobel(y*mask,cv2.CV_64F,0,1)
-    sobel = np.sqrt(sobel_h*sobel_h+sobel_v*sobel_v)
-    fusion = 0.5*x+0.5*sobel
-    fusion = fusion/np.max(fusion)
-    return fusion, z
-
 # random vertical flip
 def vflip(x, y, z):
     if random.random() > 0.5:
@@ -64,10 +51,6 @@ def hflip(x, y, z):
         z = TF.hflip(z)
     return x, y, z
 
-# convert numpy array into tensor
-def to_tensor(x, y, z):
-    return TF.to_tensor(x), TF.to_tensor(y), TF.to_tensor(z)
-
 # rotate
 def rotate(x, y, z, angle=45):
     if random.random() > 0.5:
@@ -76,6 +59,11 @@ def rotate(x, y, z, angle=45):
         z = TF.rotate(z, angle=angle)
     return x, y, z
 
+# convert numpy array into tensor
+def to_tensor(x, y, z):
+    return TF.to_tensor(x), TF.to_tensor(y), TF.to_tensor(z)
+
+
 class ResizeCT:
     def __call__(self, x, y, z):
         return resize_ct(x, y, z)
@@ -83,10 +71,6 @@ class ResizeCT:
 class SegmentCT:
     def __call__(self, x, y, z):
         return segment_ct(x, y, z)
-
-class SobelCT:
-    def __call__(self, x, y, z):
-        return sobel_ct(x, y, z)
 
 class MyVflip:
     def __call__(self, x, y, z):
