@@ -1,15 +1,13 @@
-import time
-import pydicom
-
 from deeppetct.architecture.blocks import *
 from deeppetct.utils import *
 
 class Solver(object):
-    def __init__(self, data_path, checkpoint, dataloader, model, metric_func, mode, device_idx):
+    def __init__(self, data_path, save_path, checkpoint, dataloader, model, metric_func, mode, device_idx):
         super().__init__()
 
         # load shared parameters
         self.data_path = data_path
+        self.save_path = save_path
         self.checkpoint = checkpoint
         self.dataloader = dataloader
         self.model = model
@@ -57,11 +55,11 @@ class Solver(object):
                 total_metric_pred.append(metric_pred)
                 # save predictions
                 pred_name = self.dataloader.dataset.get_path(i).split('/')[-1].split('.')[0] + '.npy'
-                pred_path = self.data_path + '/' + self.mode + '_recon/' + pred_name
+                pred_path = self.save_path + '/' + self.mode + '_recon/' + pred_name
                 np.save(pred_path, pred.cpu())
 
         # print and results
         print_metric(total_metric_x, total_metric_pred)
-        metric_path = self.data_path + '/' + self.mode + '_metric.npy'
+        metric_path = self.save_path + '/' + self.mode + '_metric.npy'
         save_metric((total_metric_x, total_metric_pred), metric_path)
         print(self.data_path.split('/')[-1]+'{:-^118s}'.format(' testing finished!'))
