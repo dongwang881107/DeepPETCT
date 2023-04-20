@@ -1,6 +1,5 @@
 import torch
 import math
-import sys
 import torch.nn.functional as F
 from torch.autograd import Variable
 
@@ -17,32 +16,11 @@ class MetricsCompose:
     def __init__(self, metrics):
         self.metrics = metrics
 
-    def __call__(self, x, y, batch=True):
+    def __call__(self, x, y):
         metrics = {}
         for m in self.metrics:
-            metrics = dict(metrics, **m(x,y,batch=batch))
+            metrics = dict(metrics, **m(x,y))
         return metrics
-
-# compare metrics for all batches
-def batch_metric(x, y, name, reduction='sum'):
-    metric = 0
-    for i in range(x.size()[0]):
-        x_slice = x[i,0,:,:]
-        y_slice = y[i,0,:,:]
-        if name == 'MSE':
-            metric += compare_MSE(x_slice, y_slice)
-        elif name == 'RMSE':
-            metric += compare_RMSE(x_slice, y_slice)
-        elif name == 'PSNR':
-            metric += compare_PSNR(x_slice, y_slice)
-        elif name == 'SSIM':
-            x_slice = x_slice.unsqueeze(0).unsqueeze(0)
-            y_slice = y_slice.unsqueeze(0).unsqueeze(0)
-            metric += compare_SSIM(x_slice, y_slice)
-        else:
-            print('MSE | RMSE | PSNR | SSIM')
-            sys.exit(0)
-    return metric if reduction == 'sum' else metric/x.size()[0]
 
 def compare_MSE(x, y):
     return ((x-y)**2).mean()
@@ -83,17 +61,17 @@ def _create_window(window_size, channel):
     return window
 
 class CompareMSE:
-    def __call__(self, x, y, batch=True):
-        return {'MSE':batch_metric(x,y,'MSE')} if batch else {'MSE':compare_MSE(x,y)}
+    def __call__(self, x, y):
+        return {'MSE':compare_MSE(x,y)}
 
 class CompareRMSE:
-    def __call__(self, x, y, batch=True):
-        return {'RMSE':batch_metric(x,y,'RMSE')} if batch else {'RMSE':compare_RMSE(x,y)}
+    def __call__(self, x, y):
+        return {'RMSE':compare_RMSE(x,y)}
 
 class ComparePSNR:
-    def __call__(self, x, y, batch=True):
-        return {'PSNR':batch_metric(x,y,'PSNR')} if batch else {'PSNR':compare_PSNR(x,y)}
+    def __call__(self, x, y):
+        return {'PSNR':compare_PSNR(x,y)}
 
 class CompareSSIM:
-    def __call__(self, x, y, batch=True):
-        return {'SSIM':batch_metric(x,y,'SSIM')} if batch else {'SSIM':compare_SSIM(x,y)}
+    def __call__(self, x, y):
+        return {'SSIM':compare_SSIM(x,y)}

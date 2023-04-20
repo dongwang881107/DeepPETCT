@@ -1,4 +1,3 @@
-import random
 import cv2
 import numpy as np
 import torchvision.transforms.functional as TF
@@ -7,9 +6,6 @@ __all__ = [
     "TransCompose",
     "ResizeCT",
     "SegmentCT",
-    "MyVflip",
-    "MyHflip",
-    "MyRotate",
     "MyNormalize",
     "MyTotensor",
 ]
@@ -35,34 +31,9 @@ def segment_ct(x, y, z):
     y = y*mask
     return x, y, z
 
-# random vertical flip
-def vflip(x, y, z):
-    if random.random() > 0.5:
-        x = TF.vflip(x)
-        y = TF.vflip(y)
-        z = TF.vflip(z)
-    return x, y, z
-
-# random horizontal flip
-def hflip(x, y, z):
-    if random.random() > 0.5:
-        x = TF.hflip(x)
-        y = TF.hflip(y)
-        z = TF.hflip(z)
-    return x, y, z
-
-# rotate
-def rotate(x, y, z, angle=45):
-    if random.random() > 0.5:
-        x = TF.rotate(x, angle=angle)
-        y = TF.rotate(y, angle=angle)
-        z = TF.rotate(z, angle=angle)
-    return x, y, z
-
 # convert numpy array into tensor
 def to_tensor(x, y, z):
     return TF.to_tensor(x), TF.to_tensor(y), TF.to_tensor(z)
-
 
 class ResizeCT:
     def __call__(self, x, y, z):
@@ -71,18 +42,6 @@ class ResizeCT:
 class SegmentCT:
     def __call__(self, x, y, z):
         return segment_ct(x, y, z)
-
-class MyVflip:
-    def __call__(self, x, y, z):
-        return vflip(x, y, z)
-
-class MyHflip:
-    def __call__(self, x, y, z):
-        return hflip(x, y, z)
-
-class MyRotate:
-    def __call__(self, x, y, z, angle=45):
-        return rotate(x, y, z, angle)
 
 class MyTotensor:
     def __call__(self, x, y, z):
