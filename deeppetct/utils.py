@@ -1,8 +1,19 @@
 import sys
 import os
+import glob
 import numpy as np
 import torch
 
+# check if the case have already been tested
+def check_if_done(path, mode):
+    test_status = False
+    enhanced_path= os.path.join(path, 'short_'+mode+'_enhanced')
+    ori_path = os.path.join(path, 'short_'+mode)
+    enhanced_files = glob.glob(enhanced_path+'/I*')
+    ori_files = glob.glob(ori_path+'/I*')
+    if len(enhanced_files) == len(ori_files) > 0:
+        test_status = True
+    return test_status
 
 # print in both console and file
 class LoggingPrinter:
@@ -30,7 +41,7 @@ def set_logger(path, name):
 
 # set up folder
 def set_folder(case_path, mode):
-    save_path = case_path + '/short_' + mode + '_enhanced'
+    save_path = os.path.join(case_path, 'short_'+mode+'_enhanced')
     if not os.path.exists(save_path):
         os.mkdir(save_path)
     return save_path

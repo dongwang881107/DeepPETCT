@@ -1,4 +1,5 @@
 import pydicom
+import time
 
 from deeppetct.architecture.blocks import *
 from deeppetct.utils import *
@@ -32,6 +33,8 @@ class Solver(object):
         self.model = self.model.to(self.device)
         
         # testing
+        print('{:-^118s}'.format(self.save_path.split('\\')[-2] + ' testing start!'))
+        start = time.time()
         total_metric_short_pet = []
         total_metric_pred = []
         self.model.eval()
@@ -58,12 +61,14 @@ class Solver(object):
                 dcm = pydicom.dcmread(dcm_path)
                 dcm.PixelData = (pred.cpu().numpy()*np.max(dcm.pixel_array)).astype(np.int16)
                 dcm.SeriesDescription = '[WB_CTAC_ENHANCED] Body'
-                pred_name = dcm_path.split('/')[-1]
-                pred_path = self.save_path + '/' + pred_name
+                pred_name = dcm_path.split('\\')[-1]
+                pred_path = os.path.join(self.save_path, pred_name)
                 dcm.save_as(pred_path)
 
         # print and results
         print_metric(total_metric_short_pet, total_metric_pred)
-        metric_path = self.save_path + '/' + self.mode + '_metric.npy'
+        metric_path = os.path.join(self.save_path, 'metric.npy')
         save_metric((total_metric_short_pet, total_metric_pred), metric_path)
-        print(self.save_path.split('/')[-2]+'{:-^118s}'.format(' testing finished!'))
+        end = time.time()
+        print('Running time is {:.4f} seconds'.format(end-start))
+        print('{:-^118s}'.format(self.save_path.split('\\')[-2] + ' testing finished!\n'))

@@ -7,7 +7,7 @@ class M3SNET(nn.Module):
     # Dong Wang, 2023
     def __init__(self):
         super(M3SNET, self).__init__()
-        print('Multi-Modality Multi-Branch Multi-Self-Attention Network for Low-Dose PET/CT Reconstruction')
+        print('M3S-NET for Low-Dose PET-CT Enhancement')
 
         self.kernel_size = 5
         self.padding = 0
