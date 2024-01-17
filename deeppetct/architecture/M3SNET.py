@@ -4,7 +4,7 @@ from deeppetct.architecture.blocks import *
 
 class M3SNET(nn.Module):
     # Multi-Modality Multi-Branch Multi-Self-Attention Network with Structure-Promoting Loss for Low-Dose PET/CT Reconstruction
-    # Dong Wang, 2022
+    # Dong Wang, 2023
     def __init__(self):
         super(M3SNET, self).__init__()
         print('Multi-Modality Multi-Branch Multi-Self-Attention Network for Low-Dose PET/CT Reconstruction')

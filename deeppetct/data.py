@@ -1,7 +1,6 @@
 import os
 import glob
 import pydicom
-import numpy as np
 
 from torch.utils.data import Dataset, DataLoader
 from deeppetct.utils import *
@@ -11,31 +10,32 @@ class MyDataset(Dataset):
     def __init__(self, path, mode, transform):
         super().__init__()
 
-        self.low_dose_path = sorted(glob.glob(path+'/'+mode+'/*.dcm'))
-        self.ct_path = sorted(glob.glob(path+'/CT/*.dcm'))
-        self.high_dose_path = sorted(glob.glob(path+'/60s/*.dcm'))
+        self.short_pet_path = sorted(glob.glob(path+'/short_'+mode+'/I*'))
+        self.ct_path = sorted(glob.glob(path+'/ct/I*'))
+        self.long_pet_path = sorted(glob.glob(path+'/long_*/I*'))
 
-        self.low_dose = [pydicom.dcmread(f).pixel_array for f in self.low_dose_path]
+        self.short_pet = [pydicom.dcmread(f).pixel_array for f in self.short_pet_path]
         self.ct = [pydicom.dcmread(f).pixel_array for f in self.ct_path]
-        self.high_dose = [pydicom.dcmread(f).pixel_array for f in self.high_dose_path]
+        self.long_pet = [pydicom.dcmread(f).pixel_array for f in self.long_pet_path]
 
         self.transform = transform
 
     def __len__(self):
-        return len(self.low_dose)
+        return len(self.short_pet)
 
     def __getitem__(self, idx):
-        low_dose, ct, high_dose = self.low_dose[idx], self.ct[idx], self.high_dose[idx]
+        idx_ct = len(self.short_pet)-idx-1 
+        short_pet, ct, long_pet = self.short_pet[idx], self.ct[idx_ct], self.long_pet[idx]
         if self.transform:
-            low_dose, ct, high_dose = self.transform(low_dose, ct, high_dose)
-        return (low_dose, ct, high_dose)
+            short_pet, ct, long_pet = self.transform(short_pet, ct, long_pet)
+        return (short_pet, ct, long_pet)
     
     def get_path(self, idx):
-        return self.high_dose_path[idx]
+        return self.short_pet_path[idx]
 
 # build dataloader
-def get_loader(path, mode, trans, num_workers):
+def get_loader(path, mode, trans):
     ds = MyDataset(path, mode, trans)
-    dl = DataLoader(ds, batch_size=1, shuffle=False, pin_memory=True, num_workers=num_workers)
+    dl = DataLoader(ds, batch_size=1, shuffle=False, pin_memory=True, num_workers=4)
     return dl
     

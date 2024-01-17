@@ -29,15 +29,11 @@ def set_logger(path, name):
     LoggingPrinter(os.path.join(path, name+'.txt'))
 
 # set up folder
-def set_folder(save_path, case_path, mode):
-    case_name = case_path.split('/')[-1]
-    case_save_path = save_path + '/' + case_name
-    if not os.path.exists(case_save_path):
-        os.mkdir(case_save_path)
-    recon_path = case_save_path + '/' + mode + '_recon'
-    if not os.path.exists(recon_path):
-        os.mkdir(recon_path)
-    return case_save_path
+def set_folder(case_path, mode):
+    save_path = case_path + '/short_' + mode + '_enhanced'
+    if not os.path.exists(save_path):
+        os.mkdir(save_path)
+    return save_path
 
 # set up device
 def set_device(device_ids):

@@ -10,9 +10,9 @@ __all__ = [
     "MyTotensor",
 ]
 
-# x->pet10
+# x->short_pet
 # y->ct
-# z->pet60
+# z->long_pet
 
 # normalize into [0,1]
 def normalize(x, y, z):
