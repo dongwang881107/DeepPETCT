@@ -1,22 +1,15 @@
 import torch.nn as nn
 from deeppetct.architecture.blocks import *
 
-class UNET_MP(nn.Module):
-    # Ref: Anatomically aided PET image reconstruction using deep neural networks
-    # Medical Physics, 2021
-    # Conv2d(stride=2) + ConvTranspose2d(stride=2)
-    def __init__(self, sa_mode):
-        super(UNET_MP, self).__init__()
-        print('UNET_MP: UNET in Medical Physics paper, 2021')
+class UNET(nn.Module):
+    # UNet-shaped architecture without attention
+    # stack pet and ct as two channels
+    def __init__(self):
+        super(UNET, self).__init__()
         
         self.kernel_size = 3
         self.padding = 1
         self.acti = 'relu'
-        self.sa_mode = sa_mode
-        self.num_splits = 2
-
-        # attention blocks
-        self.atten_layer = atten_block(128, self.num_splits, self.sa_mode)
 
         # encoder
         self.layer1 = conv_block('conv', 2, 16, self.kernel_size, 1, self.padding, self.acti)
@@ -47,7 +40,6 @@ class UNET_MP(nn.Module):
         out = self.layer5(out)
         res3 = out
         out = self.layer6(out) 
-        out = self.atten_layer(out)
         out = self.layer7(out) 
         out = out + res3
         out = self.layer8(out)

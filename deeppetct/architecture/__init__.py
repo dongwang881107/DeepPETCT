@@ -1,6 +1,6 @@
 
-__all__ = ["UNET_MP"]
+__all__ = ["UNET"]
 
-from . import UNET_MP
+from . import UNET
 
-unet_mp = UNET_MP.UNET_MP
+unet = UNET.UNET
